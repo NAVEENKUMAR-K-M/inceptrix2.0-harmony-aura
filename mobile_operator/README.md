@@ -1,16 +1,45 @@
-# harmony_aura_operator
+# 👷 Harmony Aura: Operator App
 
-A new Flutter project.
+The Harmony Aura Operator App is the companion application for individual workers. It provides a personal safety dashboard, real-time vitals monitoring, and a direct communication link to supervisors for rest requests.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## 🚀 Key Features
 
-A few resources to get you started if this is your first Flutter project:
+### 1. **Personal Vitals Dashboard**
+- **Real-time Biometrics**: Continuous monitoring of Heart Rate (BPM), Heart Rate Variability (HRV), and Fatigue.
+- **CIS Monitoring**: Workers see their own Cognitive Intelligence Score simplified into a safety gauge.
+- **Assigned Machine Sync**: The app automatically syncs with the health of the machine being operated by that worker.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### 2. **Rest Request Lifecycle**
+- One-tap "Request Rest" functionality.
+- Captures a vitals snapshot (HR, Stress, Fatigue) at the moment of request to assist supervisor triage.
+- **Live Status Tracking**: Real-time status updates (Pending → Approved/Denied) synced directly from the Supervisor App or Web Dashboard.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
+
+## 🏗️ Technical Architecture
+
+### 🧬 **Data Models**
+- **WorkerData**: Mirrors the backend simulation properties (`heart_rate_bpm`, `fatigue_percent`, etc.).
+- **Normalization**: Translates raw machine physics into a consolidated stress level.
+
+### 🔌 **Edge Connectivity**
+- Designed to eventually interface with local Bluetooth biometric wearables (Apple Watch, Garmin, Whoop).
+- Currently utilizes a Firebase RTDB stream for simulated biometric input from the `backend/` simulation engine.
+
+---
+
+## 🛠️ Setup & Run
+
+1.  **Dependencies**:
+    ```bash
+    flutter pub get
+    ```
+2.  **Run**:
+    ```bash
+    flutter run --dart-define=FIREBASE_API_KEY=YOUR_KEY
+    ```
+
+---
+*Your Safety, Your Data. Harmony in Action.*
