@@ -35,7 +35,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyC3wBL1tKjUm1b8aJ9nSBc26E3lH_F0sYI',
+    apiKey: String.fromEnvironment('FIREBASE_API_KEY'),
     appId: '1:1099284862292:web:32df553d5c4edc800ca4c1',
     messagingSenderId: '1099284862292',
     projectId: 'harmony-aura',
@@ -45,7 +45,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyC3wBL1tKjUm1b8aJ9nSBc26E3lH_F0sYI',
+    apiKey: String.fromEnvironment('FIREBASE_API_KEY'),
     appId: '1:1099284862292:web:32df553d5c4edc800ca4c1', // Reusing Web App ID (Safe for RTDB)
     messagingSenderId: '1099284862292',
     projectId: 'harmony-aura',
@@ -54,7 +54,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyC3wBL1tKjUm1b8aJ9nSBc26E3lH_F0sYI',
+    apiKey: String.fromEnvironment('FIREBASE_API_KEY'),
     appId: '1:1099284862292:web:32df553d5c4edc800ca4c1',
     messagingSenderId: '1099284862292',
     projectId: 'harmony-aura',
@@ -63,7 +63,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyC3wBL1tKjUm1b8aJ9nSBc26E3lH_F0sYI',
+    apiKey: String.fromEnvironment('FIREBASE_API_KEY'),
     appId: '1:1099284862292:web:32df553d5c4edc800ca4c1',
     messagingSenderId: '1099284862292',
     projectId: 'harmony-aura',
