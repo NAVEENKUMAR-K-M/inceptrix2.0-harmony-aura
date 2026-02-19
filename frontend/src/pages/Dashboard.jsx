@@ -4,6 +4,7 @@ import Sidebar from '../components/Sidebar';
 import GlobalHeader from '../components/GlobalHeader';
 import WorkerCard from '../components/WorkerCard';
 import WorkerDetailModal from '../components/WorkerDetailModal';
+import Maintenance from './Maintenance';
 import useRealtimeWorkers from '../hooks/useRealtimeWorkers';
 import useRealtimeMachines from '../hooks/useRealtimeMachines';
 
@@ -122,69 +123,75 @@ const Dashboard = () => {
             <main className="pl-[280px] pt-20 flex-1">
                 <div className="p-8 w-full max-w-[1920px] mx-auto">
 
-                    {/* Dashboard Header / Filter Bar */}
-                    <div className="flex justify-between items-end mb-8">
-                        <div>
-                            <h2 className="text-3xl font-display font-bold text-white tracking-tight">One-View Overwatch</h2>
-                            <p className="text-textSecondary mt-1">Real-time biometrics and machine telemetry.</p>
-                        </div>
-
-                        <div className="flex items-center gap-6">
-                            {/* Filter Pills */}
-                            <div className="flex bg-surface rounded-xl p-1 border border-white/5">
-                                {['All', 'Critical', 'Warning', 'Safe'].map((level) => (
-                                    <button
-                                        key={level}
-                                        onClick={() => setFilter(level)}
-                                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 ${filter === level
-                                            ? 'bg-white/10 text-white shadow-sm'
-                                            : 'text-textDim hover:text-white hover:bg-white/5'
-                                            }`}
-                                    >
-                                        {level} <span className="opacity-50 text-xs ml-1">
-                                            {level === 'All' ? stats.total : level === 'Critical' ? stats.critical : level === 'Warning' ? stats.warning : stats.safe}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Risk Toggle Control */}
-                            <div className="flex items-center gap-3 bg-surface p-2 rounded-xl border border-white/5">
-                                <span className={`text-xs font-bold uppercase tracking-wider transition-colors ${isRiskActive ? 'text-critical animate-pulse' : 'text-textDim'}`}>
-                                    {isRiskActive ? 'Risk Sim Active' : 'Risk Sim Off'}
-                                </span>
-                                <button
-                                    onClick={toggleRiskSimulation}
-                                    className={`relative w-12 h-6 rounded-full transition-colors duration-300 focus:outline-none ${isRiskActive ? 'bg-critical shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-white/10'
-                                        }`}
-                                >
-                                    <div
-                                        className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 ${isRiskActive ? 'translate-x-6' : 'translate-x-0'
-                                            }`}
-                                    />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Grid Layout */}
-                    {filteredWorkers.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-                            {filteredWorkers.map((worker, index) => (
-                                <WorkerCard
-                                    key={worker.worker_id}
-                                    worker={worker}
-                                    machine={machines ? machines[worker.assigned_machine] : null}
-                                    onClick={() => setSelectedWorkerId(worker.worker_id)}
-                                    index={index}
-                                />
-                            ))}
-                        </div>
+                    {activeTab === 'maintenance' ? (
+                        <Maintenance />
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-[50vh] text-textDim opacity-50">
-                            <div className="text-6xl mb-4">☹</div>
-                            <p className="font-mono text-lg">No active units found matching this criteria.</p>
-                        </div>
+                        <>
+                            {/* Dashboard Header / Filter Bar */}
+                            <div className="flex justify-between items-end mb-8">
+                                <div>
+                                    <h2 className="text-3xl font-display font-bold text-white tracking-tight">One-View Overwatch</h2>
+                                    <p className="text-textSecondary mt-1">Real-time biometrics and machine telemetry.</p>
+                                </div>
+
+                                <div className="flex items-center gap-6">
+                                    {/* Filter Pills */}
+                                    <div className="flex bg-surface rounded-xl p-1 border border-white/5">
+                                        {['All', 'Critical', 'Warning', 'Safe'].map((level) => (
+                                            <button
+                                                key={level}
+                                                onClick={() => setFilter(level)}
+                                                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 ${filter === level
+                                                    ? 'bg-white/10 text-white shadow-sm'
+                                                    : 'text-textDim hover:text-white hover:bg-white/5'
+                                                    }`}
+                                            >
+                                                {level} <span className="opacity-50 text-xs ml-1">
+                                                    {level === 'All' ? stats.total : level === 'Critical' ? stats.critical : level === 'Warning' ? stats.warning : stats.safe}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Risk Toggle Control */}
+                                    <div className="flex items-center gap-3 bg-surface p-2 rounded-xl border border-white/5">
+                                        <span className={`text-xs font-bold uppercase tracking-wider transition-colors ${isRiskActive ? 'text-critical animate-pulse' : 'text-textDim'}`}>
+                                            {isRiskActive ? 'Risk Sim Active' : 'Risk Sim Off'}
+                                        </span>
+                                        <button
+                                            onClick={toggleRiskSimulation}
+                                            className={`relative w-12 h-6 rounded-full transition-colors duration-300 focus:outline-none ${isRiskActive ? 'bg-critical shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-white/10'
+                                                }`}
+                                        >
+                                            <div
+                                                className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 ${isRiskActive ? 'translate-x-6' : 'translate-x-0'
+                                                    }`}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Grid Layout */}
+                            {filteredWorkers.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                                    {filteredWorkers.map((worker, index) => (
+                                        <WorkerCard
+                                            key={worker.worker_id}
+                                            worker={worker}
+                                            machine={machines ? machines[worker.assigned_machine] : null}
+                                            onClick={() => setSelectedWorkerId(worker.worker_id)}
+                                            index={index}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-[50vh] text-textDim opacity-50">
+                                    <div className="text-6xl mb-4">☹</div>
+                                    <p className="font-mono text-lg">No active units found matching this criteria.</p>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </main>

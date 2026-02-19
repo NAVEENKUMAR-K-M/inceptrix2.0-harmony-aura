@@ -55,6 +55,12 @@ const Sidebar = ({ activeTab = 'overview', onTabChange }) => {
                     active={activeTab === 'analytics'}
                     onClick={() => onTabChange('analytics')}
                 />
+                <NavItem
+                    icon={ShieldCheck}
+                    label="Maintenance"
+                    active={activeTab === 'maintenance'}
+                    onClick={() => onTabChange('maintenance')}
+                />
             </div>
 
             {/* Bottom Actions */}

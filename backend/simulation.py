@@ -7,6 +7,14 @@ import random
 import os
 import json
 
+# Predictive Maintenance Engine
+try:
+    from pdm.inference import PredictiveMaintenanceEngine
+    PDM_AVAILABLE = True
+except ImportError:
+    PDM_AVAILABLE = False
+    print("[PdM] Predictive Maintenance module not available.")
+
 def initialize_firebase():
     try:
         if not os.path.exists(FIREBASE_CREDENTIALS_PATH):
@@ -184,6 +192,16 @@ def main():
 
     escalation_mgr = EscalationManager(site_ref)
 
+    # Initialize Predictive Maintenance Engine
+    pdm_engine = None
+    if PDM_AVAILABLE:
+        pdm_engine = PredictiveMaintenanceEngine()
+        if pdm_engine.load():
+            print("[PdM] ✅ Predictive Maintenance engine ready.")
+        else:
+            pdm_engine = None
+            print("[PdM] ⚠️  Running without predictive maintenance.")
+
     # Initialize Machines
     machines = {}
     for i in range(5):
@@ -203,6 +221,7 @@ def main():
     for wid, w in workers.items():
         print(f"  {wid} -> {w.assigned_machine_id}")
     print("\nStarting simulation loop...")
+    tick_count = 0
 
     while True:
         loop_start = time.time()
@@ -240,6 +259,36 @@ def main():
             esc_factor = escalation_mgr.get_factor(wid)
             w_state = worker.update(m_stress, escalation_factor=esc_factor)
             worker_data[wid] = w_state
+
+        # --- PdM: Push sensor data and run inference ---
+        if pdm_engine:
+            tick_count += 1
+            for mid, m_state in machine_data.items():
+                pdm_engine.push_reading(
+                    mid,
+                    m_state['engine_rpm'],
+                    m_state['engine_load'],
+                    m_state['coolant_temp'],
+                    m_state['vibration_mm_s'],
+                    m_state.get('oil_pressure', 22.0),
+                )
+
+            # Run inference every 5 ticks to avoid overhead
+            if tick_count % 5 == 0:
+                pdm_predictions = {}
+                for mid in machines:
+                    try:
+                        result = pdm_engine.predict(mid)
+                        if result:
+                            pdm_predictions[mid] = result
+                    except Exception as e:
+                        print(f"\n[PdM] Prediction error for {mid}: {e}")
+
+                if pdm_predictions and site_ref:
+                    try:
+                        site_ref.child('maintenance').update(pdm_predictions)
+                    except Exception as e:
+                        print(f"\n[PdM] Firebase write error: {e}")
 
         # --- Push to Firebase ---
         # CRITICAL FIX: Write to SPECIFIC paths to avoid overwriting escalation_trigger
