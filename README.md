@@ -4,26 +4,27 @@ Harmony Aura is a premium, high-performance industrial monitoring platform desig
 
 ## 🚀 Key Features
 
--   **Real-Time Biometrics**: Track Heart Rate, Fatigue levels, and CIS (Cognitive Interference Score) in real-time.
--   **Machine Telemetry**: Monitor machine load, status (IDLE/ACTIVE), and proximity to hazardous zones.
--   **Humanized Identifiers**: Technical IDs are automatically mapped to human names and descriptive machine assets for better situational awareness.
--   **Smart Alerts**: Instant visual feedback for critical biometrics or machine status changes.
--   **Industrial Premium UI**: Dark industrial theme with glassmorphism, micro-animations (GSAP), and responsive layouts.
--   **Single-View Overwatch**: High-density dashboard for monitoring entire sites at a glance.
+-   **Production-Grade Simulation**: Highly individualized heart rate and fatigue profiles using bio-unique RNG seeds; no two workers are identical.
+-   **Machine Physics Engine**: Equipment-specific thermal, load, and vibration characteristics for Excavators, Bulldozers, Cranes, Loaders, and Trucks.
+-   **Stochastic Sensor Jitter**: Integrated Ornstein-Uhlenbeck noise models to mimic real-world IoT telemetry fluctuations.
+-   **Tiered Risk Escalation**: Precise control over tiered worker targeting with non-identical escalation paths and a gradual ramp-up.
+-   **Live History Panel**: Dashboard-integrated notification log for monitoring and auditing critical risk events in real-time.
+-   **Advanced CIS Monitoring**: Real-time Cognitive Interference Score calculation with high-precision calibrated thresholds.
+-   **Industrial Premium UI**: GSAP-powered micro-animations, glassmorphic design, and a high-density "Overwatch" layout.
 
 ## 🛠 Tech Stack
 
 ### Frontend
 -   **React + Vite**: High-performance development and build environment.
 -   **Tailwind CSS v4**: Modern utility-first styling for a premium look.
--   **GSAP (GreenSock)**: Smooth, professional micro-animations.
--   **Lucide React**: Beautiful, consistent iconography.
+-   **GSAP (GreenSock)**: Professional micro-animations and data-flicker effects.
+-   **Lucide React**: Beautiful, consistent industrial iconography.
 -   **Firebase SDK**: Real-time data synchronization.
 
 ### Backend
--   **Python**: Core simulation and data processing engine.
+-   **Python**: Core simulation and physiological modeling engine.
 -   **Firebase Admin SDK**: Secure communication with the Realtime Database.
--   **Simulation engine**: Generates realistic biometric and telemetry patterns for testing and demos.
+-   **Advanced Models**: Ornstein-Uhlenbeck noise processes and bio-unique profile generation.
 
 ## 📦 Installation & Setup
 
@@ -34,41 +35,22 @@ Harmony Aura is a premium, high-performance industrial monitoring platform desig
 
 ### 2. Backend Setup
 1.  Navigate to `/backend`.
-2.  Install dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
+2.  Install dependencies: `pip install -r requirements.txt`.
 3.  Place your `serviceAccountKey.json` in the `/backend` directory.
-4.  Run the simulation:
-    ```bash
-    python simulation.py
-    ```
+4.  Run the simulation: `python simulation.py`.
 
 ### 3. Frontend Setup
 1.  Navigate to `/frontend`.
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
+2.  Install dependencies: `npm install`.
 3.  Create a `.env` file based on `.env.example` with your Firebase credentials.
-4.  Run the development server:
-    ```bash
-    npm run dev
-    ```
+4.  Run the development server: `npm run dev`.
 
 ## 🏗 Project Structure
 
 -   `/frontend`: React application, UI components, and styles.
 -   `/backend`: Python simulation scripts and models.
--   `/frontend/src/utils/mappings.js`: Logic for mapping technical IDs to human names.
--   `/frontend/src/components/SupervisorIcon.jsx`: Custom high-quality SVG iconography.
-
-## 🎨 Design Philosophy
-
-High-end, "Industrial Premium" aesthetic. We use:
--   Deep dark backgrounds with cyan and emerald accents.
--   GSAP for data-flicker and smooth loading transitions.
--   Custom-crafted SVG icons for supervisor identity.
+-   `/backend/models.py`: High-fidelity physiological and physical simulation models.
+-   `/frontend/src/utils/cisCalculator.js`: Logic for production-grade risk assessment.
 
 ---
 *Built with Harmony. Stay Safe.*

@@ -7,15 +7,35 @@ import WorkerDetailModal from '../components/WorkerDetailModal';
 import useRealtimeWorkers from '../hooks/useRealtimeWorkers';
 import useRealtimeMachines from '../hooks/useRealtimeMachines';
 
+import NotificationToast from '../components/NotificationToast';
+import { ref, update, onValue } from 'firebase/database';
+import { db } from '../firebase/config';
+import { AlertTriangle, Zap } from 'lucide-react';
+
+import { calculateCIS } from '../utils/cisCalculator';
+
 // Helper to calculate active stats
-const calculateStats = (workers) => {
+const calculateStats = (workers, machines) => {
     if (!workers) return { total: 0, critical: 0, warning: 0, safe: 0 };
     const values = Object.values(workers);
+
+    let critical = 0;
+    let warning = 0;
+    let safe = 0;
+
+    values.forEach(w => {
+        const m = machines ? machines[w.assigned_machine] : null;
+        const { level } = calculateCIS(w, m);
+        if (level === 'Critical') critical++;
+        else if (level === 'Warning') warning++;
+        else safe++;
+    });
+
     return {
         total: values.length,
-        critical: values.filter(w => w.cis_risk_level === 'Critical').length,
-        warning: values.filter(w => w.cis_risk_level === 'Warning').length,
-        safe: values.filter(w => w.cis_risk_level === 'Safe').length,
+        critical,
+        warning,
+        safe,
     };
 };
 
@@ -25,8 +45,29 @@ const Dashboard = () => {
     const [selectedWorkerId, setSelectedWorkerId] = useState(null);
     const [filter, setFilter] = useState('All'); // All, Critical, Warning, Safe
     const [activeTab, setActiveTab] = useState('overview');
+    const [isRiskActive, setIsRiskActive] = useState(false); // Track active state
 
-    const stats = useMemo(() => calculateStats(workers), [workers]);
+    const stats = useMemo(() => calculateStats(workers, machines), [workers, machines]);
+
+    // Sync Toggle State
+    useEffect(() => {
+        const triggerRef = ref(db, 'site/events/escalation_trigger');
+        const unsubscribe = onValue(triggerRef, (snapshot) => {
+            setIsRiskActive(!!snapshot.val());
+        });
+        return () => unsubscribe();
+    }, []);
+
+    const toggleRiskSimulation = async () => {
+        try {
+            const updates = {};
+            updates['site/events/escalation_trigger'] = !isRiskActive;
+            await update(ref(db), updates);
+        } catch (error) {
+            console.error("Failed to toggle risk:", error);
+        }
+    };
+
 
     // Filter Logic
     const filteredWorkers = useMemo(() => {
@@ -41,8 +82,13 @@ const Dashboard = () => {
         });
 
         if (filter === 'All') return workerList;
-        return workerList.filter(w => w.cis_risk_level === filter);
-    }, [workers, filter]);
+
+        return workerList.filter(w => {
+            const m = machines ? machines[w.assigned_machine] : null;
+            const { level } = calculateCIS(w, m);
+            return level === filter;
+        });
+    }, [workers, machines, filter]);
 
     // Derived Data for Modal
     const selectedWorker = selectedWorkerId && workers ? workers[selectedWorkerId] : null;
@@ -71,6 +117,7 @@ const Dashboard = () => {
         <div className="min-h-screen bg-transparent text-textMain font-sans selection:bg-primary/30">
             <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
             <GlobalHeader stats={stats} />
+            <NotificationToast />
 
             <main className="pl-[280px] pt-20 flex-1">
                 <div className="p-8 w-full max-w-[1920px] mx-auto">
@@ -82,22 +129,41 @@ const Dashboard = () => {
                             <p className="text-textSecondary mt-1">Real-time biometrics and machine telemetry.</p>
                         </div>
 
-                        {/* Filter Pills */}
-                        <div className="flex bg-surface rounded-xl p-1 border border-white/5">
-                            {['All', 'Critical', 'Warning', 'Safe'].map((level) => (
+                        <div className="flex items-center gap-6">
+                            {/* Filter Pills */}
+                            <div className="flex bg-surface rounded-xl p-1 border border-white/5">
+                                {['All', 'Critical', 'Warning', 'Safe'].map((level) => (
+                                    <button
+                                        key={level}
+                                        onClick={() => setFilter(level)}
+                                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 ${filter === level
+                                            ? 'bg-white/10 text-white shadow-sm'
+                                            : 'text-textDim hover:text-white hover:bg-white/5'
+                                            }`}
+                                    >
+                                        {level} <span className="opacity-50 text-xs ml-1">
+                                            {level === 'All' ? stats.total : level === 'Critical' ? stats.critical : level === 'Warning' ? stats.warning : stats.safe}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Risk Toggle Control */}
+                            <div className="flex items-center gap-3 bg-surface p-2 rounded-xl border border-white/5">
+                                <span className={`text-xs font-bold uppercase tracking-wider transition-colors ${isRiskActive ? 'text-critical animate-pulse' : 'text-textDim'}`}>
+                                    {isRiskActive ? 'Risk Sim Active' : 'Risk Sim Off'}
+                                </span>
                                 <button
-                                    key={level}
-                                    onClick={() => setFilter(level)}
-                                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-300 ${filter === level
-                                        ? 'bg-white/10 text-white shadow-sm'
-                                        : 'text-textDim hover:text-white hover:bg-white/5'
+                                    onClick={toggleRiskSimulation}
+                                    className={`relative w-12 h-6 rounded-full transition-colors duration-300 focus:outline-none ${isRiskActive ? 'bg-critical shadow-[0_0_15px_rgba(239,68,68,0.5)]' : 'bg-white/10'
                                         }`}
                                 >
-                                    {level} <span className="opacity-50 text-xs ml-1">
-                                        {level === 'All' ? stats.total : level === 'Critical' ? stats.critical : level === 'Warning' ? stats.warning : stats.safe}
-                                    </span>
+                                    <div
+                                        className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 ${isRiskActive ? 'translate-x-6' : 'translate-x-0'
+                                            }`}
+                                    />
                                 </button>
-                            ))}
+                            </div>
                         </div>
                     </div>
 

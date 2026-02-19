@@ -1,13 +1,20 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { gsap } from 'gsap';
 import { Heart, Activity, Cpu, AlertTriangle, Zap } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import CISGauge from './CISGauge';
 import { getWorkerName, getMachineName } from '../utils/mappings';
+import { calculateCIS } from '../utils/cisCalculator';
 
 const WorkerCard = ({ worker, machine, onClick, index }) => {
     const cardRef = useRef(null);
-    const { worker_id, cis_score, cis_risk_level, heart_rate_bpm, fatigue_percent } = worker;
+    const { worker_id, heart_rate_bpm, fatigue_percent } = worker;
+
+    // Recalculate CIS locally
+    const { score: cis_score, level: cis_risk_level } = useMemo(
+        () => calculateCIS(worker, machine),
+        [worker, machine]
+    );
 
     // GSAP Entry Animation
     useEffect(() => {
@@ -33,6 +40,12 @@ const WorkerCard = ({ worker, machine, onClick, index }) => {
     let borderClass = 'border-white/5 hover:border-primary/50';
     let glowEffect = '';
 
+    // Dynamic background color interpolation based on CIS score (0-1)
+    // We can use a inline style for the background gradient opacity or tint
+    const bgTint = cis_score > 0.4
+        ? (cis_score > 0.7 ? `rgba(239, 68, 68, ${cis_score * 0.3})` : `rgba(245, 158, 11, ${cis_score * 0.3})`)
+        : `rgba(16, 185, 129, ${cis_score * 0.1})`;
+
     if (isCritical) {
         borderClass = 'border-critical/50 hover:border-critical';
         glowEffect = 'shadow-[0_0_30px_rgba(239,68,68,0.15)]';
@@ -47,6 +60,10 @@ const WorkerCard = ({ worker, machine, onClick, index }) => {
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             className={`cursor-pointer glass-panel rounded-[var(--radius-card)] p-6 relative overflow-hidden group transition-colors duration-300 ${borderClass} ${glowEffect}`}
+            style={{
+                backgroundColor: bgTint,
+                borderColor: isCritical ? 'rgba(239, 68, 68, 0.5)' : isWarning ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255, 255, 255, 0.05)'
+            }}
         >
             {/* Background Mesh Gradient (Subtle) */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
