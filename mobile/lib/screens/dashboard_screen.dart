@@ -4,6 +4,7 @@ import '../core/theme.dart';
 import '../models/models.dart';
 import '../services/firebase_service.dart';
 import '../widgets/worker_card.dart';
+import '../widgets/environment_banner.dart';
 import 'workforce_screen.dart';
 import 'machines_screen.dart';
 import 'alerts_screen.dart';
@@ -85,6 +86,7 @@ class _OverviewTabState extends State<_OverviewTab> {
       child: Column(
         children: [
           _buildHeader(),
+          _buildEnvironmentBanner(),
           _buildFilterBar(),
           Expanded(child: _buildWorkerList()),
         ],
@@ -169,6 +171,21 @@ class _OverviewTabState extends State<_OverviewTab> {
           const Text('One-View Overwatch', style: TextStyle(color: AuraColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
         ],
       ),
+    );
+  }
+
+  Widget _buildEnvironmentBanner() {
+    return StreamBuilder<DatabaseEvent>(
+      stream: _firebase.environmentStream,
+      builder: (context, snapshot) {
+        SiteEnvironmentData env = SiteEnvironmentData.defaults();
+        if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
+          env = SiteEnvironmentData.fromMap(
+            snapshot.data!.snapshot.value as Map,
+          );
+        }
+        return EnvironmentBanner(env: env);
+      },
     );
   }
 

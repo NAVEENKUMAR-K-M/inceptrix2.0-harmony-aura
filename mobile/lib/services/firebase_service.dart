@@ -30,6 +30,14 @@ class FirebaseService {
   Stream<DatabaseEvent> get maintenanceStream =>
       _db.child('maintenance').onValue;
 
+  // ── Site Environment ──
+  Stream<DatabaseEvent> get environmentStream =>
+      _db.child('env').onValue;
+
+  // ── Actionable Recommendations ──
+  Stream<DatabaseEvent> get recommendationsStream =>
+      _db.child('recommendations').onValue;
+
   /// Toggle risk simulation on/off
   Future<void> toggleEscalation(bool active) async {
     await _db.child('events/escalation_trigger').set(active);
