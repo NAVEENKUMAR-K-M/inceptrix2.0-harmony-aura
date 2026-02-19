@@ -47,6 +47,15 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# Flutter/Dart
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
+mobile/.packages
+mobile/pubspec.lock
+*.iml
+
 # Secrets & Config (CRITICAL)
 backend/serviceAccountKey.json
 frontend/.env
