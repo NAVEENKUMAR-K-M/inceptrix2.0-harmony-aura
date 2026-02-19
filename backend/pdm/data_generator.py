@@ -87,6 +87,9 @@ def generate_healthy_sequence(profile, seq_len=60):
     vib = profile["vibration_base"]
     oil = profile["oil_pressure_base"]
     rpm_noise, load_noise, temp_noise = 0, 0, 0
+    # Environmental: normal ambient temp range (25-38°C)
+    ambient_base = random.uniform(25.0, 35.0)
+    ambient_noise = 0
 
     for t in range(seq_len):
         # Mode transitions: 10% chance per tick for realistic variation
@@ -122,12 +125,17 @@ def generate_healthy_sequence(profile, seq_len=60):
         vib_val = profile["vibration_base"] + (load_val / 100) * 4.0 + random.uniform(-0.2, 0.2)
         oil_val = max(0, (rpm_val / 2500) * 55 + random.uniform(-0.5, 0.5))
 
+        # Ambient temperature: gentle fluctuation around base
+        ambient_noise = ou_noise(ambient_noise, 0.15, 0.3)
+        ambient_val = max(18, min(45, ambient_base + ambient_noise))
+
         readings.append([
             round(rpm_val, 1),
             round(load_val, 1),
             round(temp_val, 1),
             round(vib_val, 2),
             round(oil_val, 1),
+            round(ambient_val, 1),
         ])
 
     return readings
@@ -144,6 +152,9 @@ def generate_degradation_sequence(profile, mode, seq_len=60, max_progress=1.0):
     vib = profile["vibration_base"]
     oil = profile["oil_pressure_base"]
     rpm_noise, load_noise, temp_noise = 0, 0, 0
+    # Environmental: degradation often correlates with higher ambient temps
+    ambient_base = random.uniform(30.0, 40.0)
+    ambient_noise = 0
 
     for t in range(seq_len):
         progress = (t / seq_len) * max_progress  # Scale by max_progress
@@ -213,12 +224,17 @@ def generate_degradation_sequence(profile, mode, seq_len=60, max_progress=1.0):
         vib_val = max(0, vib + (load_val / 100) * 4.0 + vib_boost + random.uniform(-0.2, 0.2))
         oil_val = max(0, (rpm_val / 2500) * 55 - oil_drop + random.uniform(-1.5, 1.5))
 
+        # Ambient temp: rises with degradation (heatwave correlation)
+        ambient_noise = ou_noise(ambient_noise, 0.15, 0.4)
+        ambient_val = max(18, min(52, ambient_base + deg_factor * 8.0 + ambient_noise))
+
         readings.append([
             round(rpm_val, 1),
             round(load_val, 1),
             round(temp_val, 1),
             round(vib_val, 2),
             round(oil_val, 1),
+            round(ambient_val, 1),
         ])
         labels.append(label)
 
@@ -234,7 +250,7 @@ def generate_dataset(
     os.makedirs(output_dir, exist_ok=True)
 
     all_sequences = []  # Each: (machine_type, sequence_data, label)
-    feature_names = ["rpm", "load", "temp", "vibration", "oil_pressure"]
+    feature_names = ["rpm", "load", "temp", "vibration", "oil_pressure", "ambient_temp"]
 
     for machine_type, profile in MACHINE_PROFILES.items():
         print(f"\n{'='*50}")
@@ -337,7 +353,7 @@ def _save_combined_csv(filepath, all_sequences, feature_names, seq_len):
 
 def _save_numpy(output_dir, all_sequences, seq_len):
     """Save as NumPy arrays: X.npy (samples, timesteps, features), y.npy (samples,)."""
-    n_features = 5
+    n_features = 6
     X = np.zeros((len(all_sequences), seq_len, n_features))
     y = np.zeros(len(all_sequences), dtype=np.int32)
 

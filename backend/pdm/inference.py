@@ -51,12 +51,12 @@ class PredictiveMaintenanceEngine:
             print(f"[PdM] ❌ Failed to load model: {e}")
             return False
 
-    def push_reading(self, machine_id, rpm, load, temp, vibration, oil_pressure):
+    def push_reading(self, machine_id, rpm, load, temp, vibration, oil_pressure, ambient_temp=30.0):
         """Add a new sensor reading to the machine's buffer."""
         if machine_id not in self.buffers:
             self.buffers[machine_id] = []
 
-        self.buffers[machine_id].append([rpm, load, temp, vibration, oil_pressure])
+        self.buffers[machine_id].append([rpm, load, temp, vibration, oil_pressure, ambient_temp])
 
         # Keep only the last WINDOW_SIZE readings
         if len(self.buffers[machine_id]) > WINDOW_SIZE:

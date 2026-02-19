@@ -100,7 +100,7 @@ class Machine:
         """Ornstein-Uhlenbeck step: mean-reverting random walk for sensor jitter."""
         return current * (1 - mean_reversion) + self._rng.gauss(0, volatility)
 
-    def update(self, escalation_factor=0.0):
+    def update(self, escalation_factor=0.0, ambient_temp=30.0):
         self.timestamp = time.time()
         p = self.profile
         v = self._variance
@@ -134,6 +134,10 @@ class Machine:
         target_load = min(target_load, 100)
         target_temp += 35 * escalation_factor
 
+        # --- Environmental Coupling: Ambient heat reduces cooling ---
+        thermal_penalty = max(0, (ambient_temp - 30.0) * 0.6)
+        target_temp += thermal_penalty
+
         # --- Smooth Transitions with Type-Specific Inertia ---
         resp = p["load_responsiveness"]
         therm = p["thermal_inertia"]
@@ -153,7 +157,7 @@ class Machine:
 
         # Clamp
         self.engine_load = max(0, min(100, self.engine_load))
-        self.coolant_temp = max(20, min(120, self.coolant_temp))
+        self.coolant_temp = max(20, min(130, self.coolant_temp))
 
         # --- Derived Values ---
         self.oil_pressure = max(0, (self.engine_rpm / 2500) * 55 - 8 * escalation_factor + self._rng.uniform(-0.5, 0.5))
@@ -253,7 +257,7 @@ class Worker:
         """Ornstein-Uhlenbeck: mean-reverting random walk."""
         return current * (1 - mean_reversion) + self._rng.gauss(0, volatility)
 
-    def update(self, machine_stress, escalation_factor=0.0):
+    def update(self, machine_stress, escalation_factor=0.0, humidity_factor=1.0):
         self.timestamp = time.time()
 
         # ── Heart Rate ──
@@ -280,13 +284,14 @@ class Worker:
         self.hrv = max(8, min(90, self.hrv))
 
         # ── Fatigue ──
+        # Environmental coupling: high humidity accelerates fatigue
         if escalation_factor > 0:
-            # Accumulate: rate depends on individual resistance and escalation intensity
-            fatigue_gain = 0.6 * escalation_factor * self.fatigue_resistance
+            fatigue_gain = 0.6 * escalation_factor * self.fatigue_resistance * humidity_factor
             self.fatigue += fatigue_gain
         else:
-            # Recovery: drift back towards personal baseline
-            self.fatigue += (self.baseline_fatigue - self.fatigue) * self.recovery_rate
+            # Even at rest, high humidity slowly drains energy
+            env_drain = max(0, (humidity_factor - 1.0) * 0.08)
+            self.fatigue += (self.baseline_fatigue - self.fatigue) * self.recovery_rate + env_drain
 
         # Add biological micro-variation
         self._fatigue_noise = self._ou_step(self._fatigue_noise, 0.2, 0.15)
@@ -340,4 +345,113 @@ class Worker:
             "cis_score": self.cis_score,
             "cis_risk_level": self.cis_risk_level,
             "timestamp": self.timestamp,
+        }
+
+
+# ─────────────────────────────────────────────────
+# Site Environment Simulation
+# ─────────────────────────────────────────────────
+# Simulates ambient conditions at the construction site:
+#   - Temperature follows a sinusoidal day/night cycle (compressed to ~5 min)
+#   - Humidity inversely correlates with temperature
+#   - Weather events (heatwave, rain) can be triggered externally
+#
+# Coupling effects:
+#   Machine: ambient heat reduces cooling efficiency → higher coolant_temp
+#   Worker:  high humidity accelerates fatigue accumulation
+
+class SiteEnvironment:
+    """Simulates ambient site conditions with realistic fluctuations."""
+
+    # Compressed day = ~5 min for demo purposes
+    DAY_CYCLE_SECONDS = 300.0
+
+    def __init__(self):
+        self._rng = random.Random(42)
+        self._tick = 0
+
+        # Base ranges
+        self._temp_min = 26.0   # Night-time low
+        self._temp_max = 38.0   # Daytime high
+        self._hum_min = 40.0    # Dry (hot afternoon)
+        self._hum_max = 75.0    # Humid (early morning)
+
+        # State
+        self.ambient_temp = 30.0
+        self.humidity = 55.0
+        self.weather = "Clear"     # Clear | Overcast | Rain | Heatwave
+        self.wind_speed_kmh = 8.0
+
+        # Noise (Ornstein-Uhlenbeck)
+        self._temp_noise = 0.0
+        self._hum_noise = 0.0
+
+    def _ou_step(self, current, mean_reversion=0.15, volatility=0.5):
+        return current * (1 - mean_reversion) + self._rng.gauss(0, volatility)
+
+    def update(self):
+        """Advance by one simulation tick (~1 s)."""
+        self._tick += 1
+
+        # ── Day/Night sinusoidal cycle ──
+        phase = (self._tick / self.DAY_CYCLE_SECONDS) * 2 * math.pi
+        day_factor = (math.sin(phase) + 1.0) / 2.0  # 0 (night) → 1 (noon)
+
+        # ── Weather modifiers ──
+        temp_boost = 0.0
+        hum_boost = 0.0
+        if self.weather == "Heatwave":
+            temp_boost = 8.0
+            hum_boost = -10.0
+        elif self.weather == "Rain":
+            temp_boost = -5.0
+            hum_boost = 20.0
+        elif self.weather == "Overcast":
+            temp_boost = -2.0
+            hum_boost = 8.0
+
+        # ── Target values ──
+        target_temp = self._temp_min + (self._temp_max - self._temp_min) * day_factor + temp_boost
+        target_hum = self._hum_max - (self._hum_max - self._hum_min) * day_factor + hum_boost
+
+        # ── Smooth transitions ──
+        self.ambient_temp += (target_temp - self.ambient_temp) * 0.02
+        self.humidity += (target_hum - self.humidity) * 0.02
+
+        # ── Sensor noise ──
+        self._temp_noise = self._ou_step(self._temp_noise, 0.2, 0.3)
+        self._hum_noise = self._ou_step(self._hum_noise, 0.2, 0.8)
+        self.ambient_temp += self._temp_noise
+        self.humidity += self._hum_noise
+
+        # ── Clamp ──
+        self.ambient_temp = max(18, min(52, self.ambient_temp))
+        self.humidity = max(20, min(98, self.humidity))
+
+        # ── Wind (gentle random drift) ──
+        self.wind_speed_kmh += self._rng.uniform(-0.5, 0.5)
+        self.wind_speed_kmh = max(0, min(40, self.wind_speed_kmh))
+
+        return self.to_dict()
+
+    # ── Coupling Coefficients ──
+
+    @property
+    def thermal_penalty(self):
+        """Extra degrees to add to machine coolant_temp due to ambient heat.
+        Returns 0 when ambient ≤ 30°C, scales up to +12°C at 50°C."""
+        return max(0, (self.ambient_temp - 30.0) * 0.6)
+
+    @property
+    def fatigue_multiplier(self):
+        """Multiplier for worker fatigue accumulation due to humidity.
+        Returns 1.0 at 50% humidity, up to 1.5 at 95% humidity."""
+        return 1.0 + max(0, (self.humidity - 50.0) / 90.0)
+
+    def to_dict(self):
+        return {
+            "ambient_temp_c": round(self.ambient_temp, 1),
+            "humidity_pct": round(self.humidity, 1),
+            "weather": self.weather,
+            "wind_speed_kmh": round(self.wind_speed_kmh, 1),
         }

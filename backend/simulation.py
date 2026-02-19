@@ -2,7 +2,7 @@ import time
 import firebase_admin
 from firebase_admin import credentials, db
 from config import FIREBASE_CREDENTIALS_PATH, FIREBASE_DB_URL, SIMULATION_FREQUENCY, NUM_WORKERS, MACHINE_TYPES
-from models import Machine, Worker
+from models import Machine, Worker, SiteEnvironment
 import random
 import os
 import json
@@ -14,6 +14,9 @@ try:
 except ImportError:
     PDM_AVAILABLE = False
     print("[PdM] Predictive Maintenance module not available.")
+
+# Actionable Alerts Engine
+from alerts_engine import ActionableAlertsEngine
 
 def initialize_firebase():
     try:
@@ -202,6 +205,10 @@ def main():
             pdm_engine = None
             print("[PdM] ⚠️  Running without predictive maintenance.")
 
+    # Initialize Actionable Alerts Engine
+    alerts_engine = ActionableAlertsEngine()
+    print("[ALERTS] ✅ Actionable alerts engine ready.")
+
     # Initialize Machines
     machines = {}
     for i in range(5):
@@ -215,6 +222,18 @@ def main():
         wid = f"W{i+1}"
         assigned_mid = WORKER_MACHINE_MAP[wid]
         workers[wid] = Worker(wid, assigned_mid)
+
+    # Initialize Site Environment
+    site_env = SiteEnvironment()
+    print(f"[ENV] Site environment initialized (ambient={site_env.ambient_temp:.1f}°C, humidity={site_env.humidity:.1f}%)")
+
+    # Listen for weather events from Firebase
+    if site_ref:
+        def _on_weather_change(event):
+            if event.data and isinstance(event.data, str):
+                site_env.weather = event.data
+                print(f"\n[ENV] Weather changed to: {event.data}")
+        site_ref.child('events/weather').listen(_on_weather_change)
 
     print(f"Initialized {len(workers)} workers, {len(machines)} machines.")
     print("Worker -> Machine assignments:")
@@ -235,6 +254,9 @@ def main():
                 w.reset()
             escalation_mgr.needs_reset = False
 
+        # --- Update Site Environment ---
+        env_data = site_env.update()
+
         # --- Update Machines ---
         machine_data = {}
         machine_stress = {}
@@ -248,7 +270,7 @@ def main():
                     if f > max_esc:
                         max_esc = f
 
-            m_state = machine.update(escalation_factor=max_esc)
+            m_state = machine.update(escalation_factor=max_esc, ambient_temp=site_env.ambient_temp)
             machine_data[mid] = m_state
             machine_stress[mid] = machine.stress_index
 
@@ -257,7 +279,7 @@ def main():
         for wid, worker in workers.items():
             m_stress = machine_stress.get(worker.assigned_machine_id, 0)
             esc_factor = escalation_mgr.get_factor(wid)
-            w_state = worker.update(m_stress, escalation_factor=esc_factor)
+            w_state = worker.update(m_stress, escalation_factor=esc_factor, humidity_factor=site_env.fatigue_multiplier)
             worker_data[wid] = w_state
 
         # --- PdM: Push sensor data and run inference ---
@@ -271,6 +293,7 @@ def main():
                     m_state['coolant_temp'],
                     m_state['vibration_mm_s'],
                     m_state.get('oil_pressure', 22.0),
+                    env_data.get('ambient_temp_c', 30.0),
                 )
 
             # Run inference every 5 ticks to avoid overhead
@@ -290,12 +313,27 @@ def main():
                     except Exception as e:
                         print(f"\n[PdM] Firebase write error: {e}")
 
+        # --- Actionable Alerts: Evaluate every 5 ticks ---
+        if tick_count % 5 == 0:
+            recs = alerts_engine.evaluate(worker_data, machine_data, env_data)
+            if recs and site_ref:
+                try:
+                    # Push latest recommendations (overwrite for real-time)
+                    site_ref.child('recommendations').set({
+                        "alerts": recs,
+                        "count": len(recs),
+                        "timestamp": time.time() * 1000,
+                    })
+                except Exception as e:
+                    print(f"\n[ALERTS] Firebase write error: {e}")
+
         # --- Push to Firebase ---
         # CRITICAL FIX: Write to SPECIFIC paths to avoid overwriting escalation_trigger
         if site_ref:
             try:
                 site_ref.child('machines').update(machine_data)
                 site_ref.child('workers').update(worker_data)
+                site_ref.child('env').set(env_data)
                 site_ref.child('last_updated').set(time.time())
                 # Write escalation status to SEPARATE keys (NOT replacing the whole 'events' object)
                 site_ref.child('events/escalation_active').set(escalation_mgr.is_active)
