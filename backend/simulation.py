@@ -209,6 +209,26 @@ def main():
     alerts_engine = ActionableAlertsEngine()
     print("[ALERTS] ✅ Actionable alerts engine ready.")
 
+    # ── Command Queue (Supervisor Overrides) ──
+    active_overrides = {}  # key: target_id, value: { type, params, expires_at }
+    pending_commands = []  # thread-safe append from listener
+
+    def _on_command(event):
+        """Firebase listener for site/commands – collects incoming supervisor commands."""
+        if not event.data or not isinstance(event.data, dict):
+            return
+        # event.data could be the entire commands node or a single child
+        # Handle both: single command push and full-node read
+        cmds = event.data if 'action' not in event.data else {event.path.strip('/'): event.data}
+        for cmd_id, cmd in cmds.items():
+            if cmd and isinstance(cmd, dict) and cmd.get('status') != 'APPLIED':
+                pending_commands.append((cmd_id, cmd))
+                print(f"\n[CMD] Received: {cmd.get('action')} → {cmd.get('target_id')}")
+
+    if site_ref:
+        site_ref.child('commands').listen(_on_command)
+        print("[CMD] ✅ Command queue listener active.")
+
     # Initialize Machines
     machines = {}
     for i in range(5):
@@ -257,6 +277,58 @@ def main():
         # --- Update Site Environment ---
         env_data = site_env.update()
 
+        # --- Process Command Queue ---
+        now = time.time()
+        # Ingest pending commands
+        while pending_commands:
+            cmd_id, cmd = pending_commands.pop(0)
+            action = cmd.get('action', '')
+            target_id = cmd.get('target_id', '')
+            duration = cmd.get('duration_s', 120)  # default 2 minutes
+            override = {
+                'action': action,
+                'expires_at': now + duration,
+                'cmd_id': cmd_id,
+            }
+            # Parse action into override params
+            if 'CAP' in action.upper() and 'LOAD' in action.upper():
+                override['type'] = 'load_cap'
+                override['value'] = 50  # cap at 50%
+            elif 'IDLE' in action.upper() or 'COOLDOWN' in action.upper():
+                override['type'] = 'load_cap'
+                override['value'] = 10  # force idle
+            elif 'BREAK' in action.upper() or 'STAND_DOWN' in action.upper() or 'REST' in action.upper():
+                override['type'] = 'force_break'
+            elif 'REDUCE' in action.upper():
+                override['type'] = 'load_cap'
+                override['value'] = 60  # reduce intensity
+            elif 'REMOVE' in action.upper() or 'DUTY' in action.upper():
+                override['type'] = 'force_break'
+            elif 'ROTATE' in action.upper() or 'LIGHTER' in action.upper():
+                override['type'] = 'force_break'
+            elif 'SUSPEND' in action.upper():
+                override['type'] = 'force_break'
+            elif 'HYDRATION' in action.upper() or 'MONITOR' in action.upper():
+                override['type'] = 'info_only'
+            else:
+                override['type'] = 'info_only'
+
+            active_overrides[target_id] = override
+
+            # Acknowledge the command in Firebase
+            if site_ref:
+                try:
+                    site_ref.child(f'commands/{cmd_id}/status').set('APPLIED')
+                    site_ref.child(f'commands/{cmd_id}/applied_at').set(now * 1000)
+                except Exception:
+                    pass
+
+        # Expire old overrides
+        expired = [k for k, v in active_overrides.items() if now > v['expires_at']]
+        for k in expired:
+            print(f"\n[CMD] Override expired: {active_overrides[k]['action']} on {k}")
+            del active_overrides[k]
+
         # --- Update Machines ---
         machine_data = {}
         machine_stress = {}
@@ -270,7 +342,13 @@ def main():
                     if f > max_esc:
                         max_esc = f
 
-            m_state = machine.update(escalation_factor=max_esc, ambient_temp=site_env.ambient_temp)
+            # Apply supervisor load cap if active
+            load_cap = None
+            if mid in active_overrides and active_overrides[mid]['type'] == 'load_cap':
+                load_cap = active_overrides[mid]['value']
+
+            m_state = machine.update(escalation_factor=max_esc, ambient_temp=site_env.ambient_temp,
+                                     cooling_efficiency=site_env.cooling_efficiency, load_cap=load_cap)
             machine_data[mid] = m_state
             machine_stress[mid] = machine.stress_index
 
@@ -279,7 +357,18 @@ def main():
         for wid, worker in workers.items():
             m_stress = machine_stress.get(worker.assigned_machine_id, 0)
             esc_factor = escalation_mgr.get_factor(wid)
-            w_state = worker.update(m_stress, escalation_factor=esc_factor, humidity_factor=site_env.fatigue_multiplier)
+
+            # Apply supervisor force_break if active
+            force_break = False
+            if wid in active_overrides and active_overrides[wid]['type'] == 'force_break':
+                force_break = True
+            # Also check site-level overrides (apply to ALL workers)
+            if 'site' in active_overrides and active_overrides['site']['type'] == 'force_break':
+                force_break = True
+
+            w_state = worker.update(m_stress, escalation_factor=esc_factor,
+                                    humidity_factor=site_env.fatigue_multiplier,
+                                    force_break=force_break)
             worker_data[wid] = w_state
 
         # --- PdM: Push sensor data and run inference ---

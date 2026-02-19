@@ -42,4 +42,25 @@ class FirebaseService {
   Future<void> toggleEscalation(bool active) async {
     await _db.child('events/escalation_trigger').set(active);
   }
+
+  /// Send a supervisor command (actionable alert action)
+  Future<void> sendCommand({
+    required String action,
+    required String targetType,
+    required String targetId,
+    required String severity,
+    int durationS = 120,
+  }) async {
+    final cmdRef = _db.child('commands').push();
+    await cmdRef.set({
+      'action': action,
+      'target_type': targetType,
+      'target_id': targetId,
+      'severity': severity,
+      'source': 'mobile_supervisor',
+      'duration_s': durationS,
+      'timestamp': ServerValue.timestamp,
+      'status': 'PENDING',
+    });
+  }
 }

@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { ShieldAlert, AlertTriangle, Info, ChevronDown, ChevronUp, User, Cpu, MapPin } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { ShieldAlert, AlertTriangle, Info, ChevronDown, ChevronUp, User, Cpu, MapPin, Send, Check } from 'lucide-react';
+import { ref, push, set } from 'firebase/database';
+import { db } from '../firebase/config';
 
 const SEVERITY_CONFIG = {
     CRITICAL: {
@@ -39,6 +41,35 @@ const TARGET_ICONS = {
 
 const ActionableAlerts = ({ alerts = [] }) => {
     const [expanded, setExpanded] = useState(true);
+    const [sentCommands, setSentCommands] = useState({}); // { alertId: true }
+
+    const dispatchCommand = useCallback(async (alert) => {
+        if (sentCommands[alert.id]) return; // prevent double-send
+
+        const commandRef = ref(db, 'site/commands');
+        const newCmdRef = push(commandRef);
+        await set(newCmdRef, {
+            action: alert.action,
+            target_type: alert.target_type,
+            target_id: alert.target_id,
+            severity: alert.severity,
+            source: 'web_dashboard',
+            duration_s: alert.severity === 'CRITICAL' ? 180 : 120,
+            timestamp: Date.now(),
+            status: 'PENDING',
+        });
+
+        setSentCommands(prev => ({ ...prev, [alert.id]: true }));
+
+        // Reset after 3 seconds
+        setTimeout(() => {
+            setSentCommands(prev => {
+                const next = { ...prev };
+                delete next[alert.id];
+                return next;
+            });
+        }, 3000);
+    }, [sentCommands]);
 
     // Sort: CRITICAL first, then WARNING, then INFO
     const sortedAlerts = [...alerts].sort((a, b) => {
@@ -101,6 +132,7 @@ const ActionableAlerts = ({ alerts = [] }) => {
                         const config = SEVERITY_CONFIG[alert.severity] || SEVERITY_CONFIG.INFO;
                         const SeverityIcon = config.icon;
                         const TargetIcon = TARGET_ICONS[alert.target_type] || MapPin;
+                        const isSent = sentCommands[alert.id];
 
                         return (
                             <div
@@ -127,11 +159,29 @@ const ActionableAlerts = ({ alerts = [] }) => {
                                         {/* Message */}
                                         <p className="text-xs text-white/80 mb-2 leading-relaxed">{alert.message}</p>
 
-                                        {/* Action Recommendation */}
-                                        <div className="flex items-center gap-2 bg-white/[0.05] rounded-lg px-3 py-2 border border-white/[0.05]">
-                                            <span className="text-[9px] text-textDim font-mono uppercase">Action:</span>
-                                            <span className={`text-xs font-semibold ${config.text}`}>{alert.action}</span>
-                                        </div>
+                                        {/* Action Button (FUNCTIONAL) */}
+                                        <button
+                                            onClick={() => dispatchCommand(alert)}
+                                            disabled={isSent}
+                                            className={`group flex items-center gap-2 rounded-lg px-3 py-2 border transition-all duration-300 cursor-pointer
+                                                ${isSent
+                                                    ? 'bg-green-500/10 border-green-500/30'
+                                                    : 'bg-white/[0.05] border-white/[0.05] hover:bg-white/[0.1] hover:border-white/[0.15] active:scale-[0.98]'
+                                                }`}
+                                        >
+                                            {isSent ? (
+                                                <>
+                                                    <Check size={12} className="text-green-400" />
+                                                    <span className="text-xs font-semibold text-green-400">Command Sent ✓</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Send size={10} className="text-textDim group-hover:text-white/70 transition-colors" />
+                                                    <span className="text-[9px] text-textDim font-mono uppercase">Action:</span>
+                                                    <span className={`text-xs font-semibold ${config.text}`}>{alert.action}</span>
+                                                </>
+                                            )}
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -144,3 +194,4 @@ const ActionableAlerts = ({ alerts = [] }) => {
 };
 
 export default ActionableAlerts;
+

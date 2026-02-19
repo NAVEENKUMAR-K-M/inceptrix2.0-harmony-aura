@@ -428,29 +428,55 @@ class _InfoChip extends StatelessWidget {
 }
 
 // ── Recommendation Card (Actionable Alerts) ──
-class _RecommendationCard extends StatelessWidget {
+class _RecommendationCard extends StatefulWidget {
   final Recommendation rec;
 
   const _RecommendationCard({required this.rec});
 
+  @override
+  State<_RecommendationCard> createState() => _RecommendationCardState();
+}
+
+class _RecommendationCardState extends State<_RecommendationCard> {
+  bool _sent = false;
+  final FirebaseService _firebase = FirebaseService();
+
   Color get _sevColor {
-    if (rec.isCritical) return AuraColors.statusCritical;
-    if (rec.isWarning) return AuraColors.statusWarning;
+    if (widget.rec.isCritical) return AuraColors.statusCritical;
+    if (widget.rec.isWarning) return AuraColors.statusWarning;
     return const Color(0xFF3B82F6);
   }
 
   IconData get _sevIcon {
-    if (rec.isCritical) return Icons.shield_rounded;
-    if (rec.isWarning) return Icons.warning_amber_rounded;
+    if (widget.rec.isCritical) return Icons.shield_rounded;
+    if (widget.rec.isWarning) return Icons.warning_amber_rounded;
     return Icons.info_outline_rounded;
   }
 
   IconData get _targetIcon {
-    switch (rec.targetType) {
+    switch (widget.rec.targetType) {
       case 'worker': return Icons.person_rounded;
       case 'machine': return Icons.precision_manufacturing_rounded;
       default: return Icons.place_rounded;
     }
+  }
+
+  Future<void> _dispatchCommand() async {
+    if (_sent) return;
+    setState(() => _sent = true);
+
+    await _firebase.sendCommand(
+      action: widget.rec.action,
+      targetType: widget.rec.targetType,
+      targetId: widget.rec.targetId,
+      severity: widget.rec.severity,
+      durationS: widget.rec.isCritical ? 180 : 120,
+    );
+
+    // Reset after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _sent = false);
+    });
   }
 
   @override
@@ -478,7 +504,7 @@ class _RecommendationCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  rec.severity,
+                  widget.rec.severity,
                   style: TextStyle(color: _sevColor, fontSize: 8, fontWeight: FontWeight.w800, letterSpacing: 0.5),
                 ),
               ),
@@ -486,7 +512,7 @@ class _RecommendationCard extends StatelessWidget {
               Icon(_targetIcon, size: 10, color: AuraColors.textDim),
               const SizedBox(width: 3),
               Text(
-                rec.targetId,
+                widget.rec.targetId,
                 style: const TextStyle(color: AuraColors.textDim, fontSize: 10, fontWeight: FontWeight.w600),
               ),
             ],
@@ -494,35 +520,56 @@ class _RecommendationCard extends StatelessWidget {
           const SizedBox(height: 6),
           // Message
           Text(
-            rec.message,
+            widget.rec.message,
             style: const TextStyle(color: AuraColors.textSecondary, fontSize: 12, height: 1.4),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 8),
-          // Action Pill
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: AuraColors.bgSurface,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: AuraColors.border),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'ACTION: ',
-                  style: TextStyle(color: AuraColors.textDim, fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 0.3),
+          // Action Pill (TAPPABLE)
+          GestureDetector(
+            onTap: _dispatchCommand,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: _sent
+                    ? AuraColors.statusSafe.withValues(alpha: 0.15)
+                    : AuraColors.bgSurface,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: _sent
+                      ? AuraColors.statusSafe.withValues(alpha: 0.4)
+                      : AuraColors.border,
                 ),
-                Flexible(
-                  child: Text(
-                    rec.action,
-                    style: TextStyle(color: _sevColor, fontSize: 10, fontWeight: FontWeight.w700),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: _sent
+                    ? [
+                        const Icon(Icons.check_circle_rounded, size: 12, color: AuraColors.statusSafe),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'SENT ✓',
+                          style: TextStyle(color: AuraColors.statusSafe, fontSize: 10, fontWeight: FontWeight.w700),
+                        ),
+                      ]
+                    : [
+                        const Icon(Icons.send_rounded, size: 10, color: AuraColors.textDim),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'ACTION: ',
+                          style: TextStyle(color: AuraColors.textDim, fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 0.3),
+                        ),
+                        Flexible(
+                          child: Text(
+                            widget.rec.action,
+                            style: TextStyle(color: _sevColor, fontSize: 10, fontWeight: FontWeight.w700),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+              ),
             ),
           ),
         ],
