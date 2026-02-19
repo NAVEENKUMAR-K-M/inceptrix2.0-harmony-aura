@@ -21,6 +21,7 @@ class AlertsScreen extends StatelessWidget {
         child: Column(
           children: [
             _buildHeader(firebase),
+            _buildRecommendations(firebase),
             Expanded(child: _buildAlertList(firebase)),
           ],
         ),
@@ -82,6 +83,114 @@ class AlertsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRecommendations(FirebaseService firebase) {
+    return StreamBuilder<DatabaseEvent>(
+      stream: firebase.recommendationsStream,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.snapshot.value == null) {
+          return const SizedBox.shrink();
+        }
+
+        final data = snapshot.data!.snapshot.value as Map;
+        final List<dynamic> alertsList = data['alerts'] is List ? data['alerts'] : [];
+
+        if (alertsList.isEmpty) return const SizedBox.shrink();
+
+        final recs = alertsList
+            .where((e) => e != null)
+            .map((e) => Recommendation.fromMap(e as Map))
+            .toList();
+
+        // Sort: CRITICAL first
+        recs.sort((a, b) {
+          const order = {'CRITICAL': 0, 'WARNING': 1, 'INFO': 2};
+          return (order[a.severity] ?? 3).compareTo(order[b.severity] ?? 3);
+        });
+
+        final critCount = recs.where((r) => r.isCritical).length;
+        final warnCount = recs.where((r) => r.isWarning).length;
+
+        return Container(
+          constraints: const BoxConstraints(maxHeight: 240),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Section Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 6, height: 6,
+                      decoration: BoxDecoration(
+                        color: critCount > 0 ? AuraColors.red : AuraColors.amber,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'ACTIONABLE RECOMMENDATIONS',
+                      style: TextStyle(
+                        color: AuraColors.textDim,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (critCount > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        margin: const EdgeInsets.only(right: 6),
+                        decoration: BoxDecoration(
+                          color: AuraColors.red.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '$critCount CRIT',
+                          style: const TextStyle(color: AuraColors.red, fontSize: 9, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    if (warnCount > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AuraColors.amber.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '$warnCount WARN',
+                          style: const TextStyle(color: AuraColors.amber, fontSize: 9, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // Recommendation Cards (scrollable)
+              Flexible(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: recs.length,
+                  itemBuilder: (context, index) {
+                    final rec = recs[index];
+                    return _RecommendationCard(rec: rec);
+                  },
+                ),
+              ),
+              // Divider
+              Container(
+                height: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                color: AuraColors.border,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -312,6 +421,157 @@ class _InfoChip extends StatelessWidget {
           Icon(icon, size: 11, color: color.withValues(alpha: 0.7)),
           const SizedBox(width: 4),
           Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Recommendation Card (Actionable Alerts) ──
+class _RecommendationCard extends StatefulWidget {
+  final Recommendation rec;
+
+  const _RecommendationCard({required this.rec});
+
+  @override
+  State<_RecommendationCard> createState() => _RecommendationCardState();
+}
+
+class _RecommendationCardState extends State<_RecommendationCard> {
+  bool _sent = false;
+  final FirebaseService _firebase = FirebaseService();
+
+  Color get _sevColor {
+    if (widget.rec.isCritical) return AuraColors.statusCritical;
+    if (widget.rec.isWarning) return AuraColors.statusWarning;
+    return const Color(0xFF3B82F6);
+  }
+
+  IconData get _sevIcon {
+    if (widget.rec.isCritical) return Icons.shield_rounded;
+    if (widget.rec.isWarning) return Icons.warning_amber_rounded;
+    return Icons.info_outline_rounded;
+  }
+
+  IconData get _targetIcon {
+    switch (widget.rec.targetType) {
+      case 'worker': return Icons.person_rounded;
+      case 'machine': return Icons.precision_manufacturing_rounded;
+      default: return Icons.place_rounded;
+    }
+  }
+
+  Future<void> _dispatchCommand() async {
+    if (_sent) return;
+    setState(() => _sent = true);
+
+    await _firebase.sendCommand(
+      action: widget.rec.action,
+      targetType: widget.rec.targetType,
+      targetId: widget.rec.targetId,
+      severity: widget.rec.severity,
+      durationS: widget.rec.isCritical ? 180 : 120,
+    );
+
+    // Reset after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _sent = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _sevColor.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _sevColor.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Severity + Target Row
+          Row(
+            children: [
+              Icon(_sevIcon, size: 14, color: _sevColor),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: _sevColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  widget.rec.severity,
+                  style: TextStyle(color: _sevColor, fontSize: 8, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(_targetIcon, size: 10, color: AuraColors.textDim),
+              const SizedBox(width: 3),
+              Text(
+                widget.rec.targetId,
+                style: const TextStyle(color: AuraColors.textDim, fontSize: 10, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          // Message
+          Text(
+            widget.rec.message,
+            style: const TextStyle(color: AuraColors.textSecondary, fontSize: 12, height: 1.4),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 8),
+          // Action Pill (TAPPABLE)
+          GestureDetector(
+            onTap: _dispatchCommand,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: _sent
+                    ? AuraColors.statusSafe.withValues(alpha: 0.15)
+                    : AuraColors.bgSurface,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: _sent
+                      ? AuraColors.statusSafe.withValues(alpha: 0.4)
+                      : AuraColors.border,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: _sent
+                    ? [
+                        const Icon(Icons.check_circle_rounded, size: 12, color: AuraColors.statusSafe),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'SENT ✓',
+                          style: TextStyle(color: AuraColors.statusSafe, fontSize: 10, fontWeight: FontWeight.w700),
+                        ),
+                      ]
+                    : [
+                        const Icon(Icons.send_rounded, size: 10, color: AuraColors.textDim),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'ACTION: ',
+                          style: TextStyle(color: AuraColors.textDim, fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 0.3),
+                        ),
+                        Flexible(
+                          child: Text(
+                            widget.rec.action,
+                            style: TextStyle(color: _sevColor, fontSize: 10, fontWeight: FontWeight.w700),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+              ),
+            ),
+          ),
         ],
       ),
     );

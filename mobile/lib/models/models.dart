@@ -75,6 +75,80 @@ class MachineData {
   }
 }
 
+class SiteEnvironmentData {
+  final double ambientTemp;
+  final double humidity;
+  final String weather;
+  final double windSpeed;
+
+  SiteEnvironmentData({
+    required this.ambientTemp,
+    required this.humidity,
+    required this.weather,
+    required this.windSpeed,
+  });
+
+  factory SiteEnvironmentData.fromMap(Map<dynamic, dynamic> map) {
+    return SiteEnvironmentData(
+      ambientTemp: (map['ambient_temp_c'] ?? 30.0).toDouble(),
+      humidity: (map['humidity_pct'] ?? 55.0).toDouble(),
+      weather: map['weather']?.toString() ?? 'Clear',
+      windSpeed: (map['wind_speed_kmh'] ?? 8.0).toDouble(),
+    );
+  }
+
+  static SiteEnvironmentData defaults() => SiteEnvironmentData(
+    ambientTemp: 30.0,
+    humidity: 55.0,
+    weather: 'Clear',
+    windSpeed: 8.0,
+  );
+}
+
+class Recommendation {
+  final String id;
+  final String severity;
+  final String targetType;
+  final String targetId;
+  final String metric;
+  final dynamic value;
+  final dynamic threshold;
+  final String action;
+  final String message;
+  final double timestamp;
+
+  Recommendation({
+    required this.id,
+    required this.severity,
+    required this.targetType,
+    required this.targetId,
+    required this.metric,
+    required this.value,
+    required this.threshold,
+    required this.action,
+    required this.message,
+    required this.timestamp,
+  });
+
+  factory Recommendation.fromMap(Map<dynamic, dynamic> map) {
+    return Recommendation(
+      id: map['id']?.toString() ?? '',
+      severity: map['severity']?.toString() ?? 'INFO',
+      targetType: map['target_type']?.toString() ?? 'site',
+      targetId: map['target_id']?.toString() ?? '',
+      metric: map['metric']?.toString() ?? '',
+      value: map['value'],
+      threshold: map['threshold'],
+      action: map['action']?.toString() ?? '',
+      message: map['message']?.toString() ?? '',
+      timestamp: (map['timestamp'] ?? 0).toDouble(),
+    );
+  }
+
+  bool get isCritical => severity == 'CRITICAL';
+  bool get isWarning => severity == 'WARNING';
+}
+
 /// Maps technical IDs to human names (matches web dashboard mappings.js)
 class WorkerMappings {
   static const Map<String, String> names = {

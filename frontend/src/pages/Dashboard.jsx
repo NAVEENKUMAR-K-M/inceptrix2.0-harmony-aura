@@ -7,6 +7,9 @@ import WorkerDetailModal from '../components/WorkerDetailModal';
 import EnvironmentWidget from '../components/EnvironmentWidget';
 import ActionableAlerts from '../components/ActionableAlerts';
 import Maintenance from './Maintenance';
+import WorkforceView from './WorkforceView';
+import TelemetryView from './TelemetryView';
+import AnalyticsView from './AnalyticsView';
 import useRealtimeWorkers from '../hooks/useRealtimeWorkers';
 import useRealtimeMachines from '../hooks/useRealtimeMachines';
 import useRealtimeEnvironment from '../hooks/useRealtimeEnvironment';
@@ -131,6 +134,12 @@ const Dashboard = () => {
 
                     {activeTab === 'maintenance' ? (
                         <Maintenance />
+                    ) : activeTab === 'workforce' ? (
+                        <WorkforceView />
+                    ) : activeTab === 'telemetry' ? (
+                        <TelemetryView />
+                    ) : activeTab === 'analytics' ? (
+                        <AnalyticsView />
                     ) : (
                         <>
                             {/* Dashboard Header / Filter Bar */}

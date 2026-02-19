@@ -100,13 +100,15 @@ class Machine:
         """Ornstein-Uhlenbeck step: mean-reverting random walk for sensor jitter."""
         return current * (1 - mean_reversion) + self._rng.gauss(0, volatility)
 
-    def update(self, escalation_factor=0.0, ambient_temp=30.0):
+    def update(self, escalation_factor=0.0, ambient_temp=30.0, cooling_efficiency=1.0, load_cap=None):
         self.timestamp = time.time()
         p = self.profile
         v = self._variance
 
-        # --- Operating Mode ---
-        if escalation_factor > 0.5:
+        # --- Supervisor Override: force IDLE when load_cap is very low ---
+        if load_cap is not None and load_cap <= 10:
+            self.operating_mode = "IDLE"
+        elif escalation_factor > 0.5:
             self.operating_mode = "HIGH_LOAD"
         elif escalation_factor > 0.1:
             self.operating_mode = "WORKING"
@@ -119,32 +121,35 @@ class Machine:
         if self.operating_mode == "IDLE":
             target_rpm = p["idle_rpm"] * v
             target_load = p["idle_load"] * v
-            target_temp = p["idle_temp"]
         elif self.operating_mode == "WORKING":
             target_rpm = p["work_rpm"] * v
             target_load = p["work_load"] * v
-            target_temp = p["work_temp"]
         else:  # HIGH_LOAD
             target_rpm = p["peak_rpm"] * v
             target_load = p["peak_load"] * v
-            target_temp = p["peak_temp"]
 
         # --- Escalation Boost ---
         target_load += 20 * escalation_factor
         target_load = min(target_load, 100)
-        target_temp += 35 * escalation_factor
 
-        # --- Environmental Coupling: Ambient heat reduces cooling ---
-        thermal_penalty = max(0, (ambient_temp - 30.0) * 0.6)
-        target_temp += thermal_penalty
+        # --- Supervisor Override: cap load ---
+        if load_cap is not None:
+            target_load = min(target_load, load_cap)
+            target_rpm = min(target_rpm, p["work_rpm"] * 0.7)  # reduce RPM proportionally
 
         # --- Smooth Transitions with Type-Specific Inertia ---
         resp = p["load_responsiveness"]
-        therm = p["thermal_inertia"]
 
         self.engine_rpm += (target_rpm - self.engine_rpm) * resp
         self.engine_load += (target_load - self.engine_load) * resp
-        self.coolant_temp += (target_temp - self.coolant_temp) * therm
+
+        # --- Physics-based Thermal Balance ---
+        # Heat generation: proportional to load + escalation
+        heat_gen = (self.engine_load / 100) * 1.2 + escalation_factor * 0.8
+        # Radiator cooling: proportional to (coolant - ambient), scaled by efficiency
+        heat_loss = (self.coolant_temp - ambient_temp) * 0.025 * cooling_efficiency
+        # Net temperature change
+        self.coolant_temp += heat_gen - heat_loss
 
         # --- Add Sensor Noise (Ornstein-Uhlenbeck) ---
         self._rpm_noise = self._ou_step(self._rpm_noise, 0.3, 8.0)
@@ -257,8 +262,26 @@ class Worker:
         """Ornstein-Uhlenbeck: mean-reverting random walk."""
         return current * (1 - mean_reversion) + self._rng.gauss(0, volatility)
 
-    def update(self, machine_stress, escalation_factor=0.0, humidity_factor=1.0):
+    def update(self, machine_stress, escalation_factor=0.0, humidity_factor=1.0, force_break=False):
         self.timestamp = time.time()
+
+        # ── Supervisor Override: Mandatory Break ──
+        if force_break:
+            # Rapidly bring worker to resting state
+            self.heart_rate += (self.baseline_hr - self.heart_rate) * 0.15
+            self.fatigue = max(0, self.fatigue - 0.8)  # fast recovery
+            self.stress = max(0, self.stress - 1.5)
+            self.hrv = min(90, self.hrv + 0.5)
+            self.cis_score = round(max(0, min(1.0,
+                0.4 * (self.fatigue / 100) + 0.3 * (self.stress / 100) + 0.3 * (machine_stress / 100)
+            )), 2)
+            if self.cis_score >= 0.75:
+                self.cis_risk_level = "Critical"
+            elif self.cis_score >= 0.40:
+                self.cis_risk_level = "Warning"
+            else:
+                self.cis_risk_level = "Safe"
+            return self.to_dict()
 
         # ── Heart Rate ──
         # Composed of: baseline + machine coupling + escalation + physiological noise
@@ -361,10 +384,34 @@ class Worker:
 #   Worker:  high humidity accelerates fatigue accumulation
 
 class SiteEnvironment:
-    """Simulates ambient site conditions with realistic fluctuations."""
+    """Simulates ambient site conditions with realistic physics.
 
-    # Compressed day = ~5 min for demo purposes
-    DAY_CYCLE_SECONDS = 300.0
+    Key improvements over v1:
+    - Stochastic autonomous weather transitions (no external trigger needed)
+    - Wind gusts correlated with storm fronts
+    - Atmospheric pressure-driven humidity shifts
+    - Multiple noise layers for micro-variation
+    - Thermal mass: temperature changes lag behind target (inertia)
+    """
+
+    DAY_CYCLE_SECONDS = 300.0  # Compressed day = ~5 min for demo
+
+    # Weather transition matrix: probability of transitioning per tick (~1s)
+    # Format: {current: [(next, prob_per_tick), ...]}
+    WEATHER_TRANSITIONS = {
+        "Clear":    [("Overcast", 0.005), ("Heatwave", 0.002)],
+        "Overcast": [("Clear",    0.008), ("Rain",     0.006)],
+        "Rain":     [("Overcast", 0.007), ("Clear",    0.003)],
+        "Heatwave": [("Clear",    0.006), ("Overcast", 0.003)],
+    }
+
+    # Weather-specific modifiers
+    WEATHER_PROFILES = {
+        "Clear":    {"temp_offset": 0.0,  "hum_offset": 0.0,   "wind_base": 8.0,  "wind_gust": 3.0},
+        "Overcast": {"temp_offset": -2.5, "hum_offset": 10.0,  "wind_base": 12.0, "wind_gust": 5.0},
+        "Rain":     {"temp_offset": -6.0, "hum_offset": 25.0,  "wind_base": 18.0, "wind_gust": 12.0},
+        "Heatwave": {"temp_offset": 9.0,  "hum_offset": -12.0, "wind_base": 4.0,  "wind_gust": 2.0},
+    }
 
     def __init__(self):
         self._rng = random.Random(42)
@@ -373,64 +420,107 @@ class SiteEnvironment:
         # Base ranges
         self._temp_min = 26.0   # Night-time low
         self._temp_max = 38.0   # Daytime high
-        self._hum_min = 40.0    # Dry (hot afternoon)
-        self._hum_max = 75.0    # Humid (early morning)
+        self._hum_min = 38.0
+        self._hum_max = 78.0
 
         # State
         self.ambient_temp = 30.0
         self.humidity = 55.0
-        self.weather = "Clear"     # Clear | Overcast | Rain | Heatwave
+        self.weather = "Clear"
         self.wind_speed_kmh = 8.0
+        self._weather_hold = 0          # Minimum ticks before next transition
+        self._weather_ticks_elapsed = 0 # How long current weather has lasted
 
         # Noise (Ornstein-Uhlenbeck)
         self._temp_noise = 0.0
         self._hum_noise = 0.0
+        self._wind_noise = 0.0
+
+        # Atmospheric pressure (affects humidity drift)
+        self._pressure = 1013.0  # hPa
+        self._pressure_drift = 0.0
 
     def _ou_step(self, current, mean_reversion=0.15, volatility=0.5):
         return current * (1 - mean_reversion) + self._rng.gauss(0, volatility)
+
+    def _try_weather_transition(self):
+        """Stochastically transition weather based on Markov chain."""
+        self._weather_ticks_elapsed += 1
+        if self._weather_hold > 0:
+            self._weather_hold -= 1
+            return
+
+        transitions = self.WEATHER_TRANSITIONS.get(self.weather, [])
+        for next_weather, prob in transitions:
+            if self._rng.random() < prob:
+                self.weather = next_weather
+                self._weather_hold = self._rng.randint(40, 120)  # Hold for 40-120s
+                self._weather_ticks_elapsed = 0
+                return
 
     def update(self):
         """Advance by one simulation tick (~1 s)."""
         self._tick += 1
 
+        # ── Weather: Autonomous transitions ──
+        self._try_weather_transition()
+
+        wp = self.WEATHER_PROFILES[self.weather]
+
         # ── Day/Night sinusoidal cycle ──
         phase = (self._tick / self.DAY_CYCLE_SECONDS) * 2 * math.pi
         day_factor = (math.sin(phase) + 1.0) / 2.0  # 0 (night) → 1 (noon)
 
-        # ── Weather modifiers ──
-        temp_boost = 0.0
-        hum_boost = 0.0
-        if self.weather == "Heatwave":
-            temp_boost = 8.0
-            hum_boost = -10.0
-        elif self.weather == "Rain":
-            temp_boost = -5.0
-            hum_boost = 20.0
-        elif self.weather == "Overcast":
-            temp_boost = -2.0
-            hum_boost = 8.0
+        # ── Atmospheric pressure drift (affects humidity) ──
+        self._pressure_drift = self._ou_step(self._pressure_drift, 0.05, 0.15)
+        self._pressure += self._pressure_drift
+        self._pressure = max(990, min(1035, self._pressure))
+        # Low pressure = more moisture
+        pressure_hum_bonus = max(0, (1013.0 - self._pressure) * 0.6)
 
         # ── Target values ──
-        target_temp = self._temp_min + (self._temp_max - self._temp_min) * day_factor + temp_boost
-        target_hum = self._hum_max - (self._hum_max - self._hum_min) * day_factor + hum_boost
+        target_temp = (
+            self._temp_min
+            + (self._temp_max - self._temp_min) * day_factor
+            + wp["temp_offset"]
+        )
+        target_hum = (
+            self._hum_max
+            - (self._hum_max - self._hum_min) * day_factor
+            + wp["hum_offset"]
+            + pressure_hum_bonus
+        )
 
-        # ── Smooth transitions ──
-        self.ambient_temp += (target_temp - self.ambient_temp) * 0.02
-        self.humidity += (target_hum - self.humidity) * 0.02
+        # ── Thermal inertia: slow approach to target ──
+        # Atmosphere has thermal mass — temperature can't jump instantly
+        inertia = 0.012  # ~80 ticks to close 63% of the gap
+        self.ambient_temp += (target_temp - self.ambient_temp) * inertia
+        self.humidity += (target_hum - self.humidity) * 0.018
 
-        # ── Sensor noise ──
-        self._temp_noise = self._ou_step(self._temp_noise, 0.2, 0.3)
-        self._hum_noise = self._ou_step(self._hum_noise, 0.2, 0.8)
-        self.ambient_temp += self._temp_noise
-        self.humidity += self._hum_noise
+        # ── Multi-layer noise ──
+        # Layer 1: Smooth drift (slow, large)
+        self._temp_noise = self._ou_step(self._temp_noise, 0.08, 0.25)
+        self._hum_noise = self._ou_step(self._hum_noise, 0.1, 0.6)
+        # Layer 2: Fast micro-jitter (sensor noise)
+        micro_temp = self._rng.gauss(0, 0.12)
+        micro_hum = self._rng.gauss(0, 0.3)
+
+        self.ambient_temp += self._temp_noise + micro_temp
+        self.humidity += self._hum_noise + micro_hum
 
         # ── Clamp ──
         self.ambient_temp = max(18, min(52, self.ambient_temp))
         self.humidity = max(20, min(98, self.humidity))
 
-        # ── Wind (gentle random drift) ──
-        self.wind_speed_kmh += self._rng.uniform(-0.5, 0.5)
-        self.wind_speed_kmh = max(0, min(40, self.wind_speed_kmh))
+        # ── Wind: base + gusts ──
+        target_wind = wp["wind_base"]
+        gust = 0.0
+        # Random gusts: more frequent and stronger in Rain
+        if self._rng.random() < 0.05:
+            gust = self._rng.uniform(0, wp["wind_gust"])
+        self._wind_noise = self._ou_step(self._wind_noise, 0.15, 0.8)
+        self.wind_speed_kmh += (target_wind - self.wind_speed_kmh) * 0.04 + self._wind_noise + gust
+        self.wind_speed_kmh = max(0, min(55, self.wind_speed_kmh))
 
         return self.to_dict()
 
@@ -448,6 +538,14 @@ class SiteEnvironment:
         Returns 1.0 at 50% humidity, up to 1.5 at 95% humidity."""
         return 1.0 + max(0, (self.humidity - 50.0) / 90.0)
 
+    @property
+    def cooling_efficiency(self):
+        """Machine radiator cooling efficiency: 1.0 in clear weather, reduced in heatwave.
+        Rain actually HELPS cooling (water spray). Wind also helps."""
+        base = {"Clear": 1.0, "Overcast": 0.95, "Rain": 1.15, "Heatwave": 0.7}
+        wind_bonus = min(0.15, self.wind_speed_kmh / 200)
+        return base.get(self.weather, 1.0) + wind_bonus
+
     def to_dict(self):
         return {
             "ambient_temp_c": round(self.ambient_temp, 1),
@@ -455,3 +553,4 @@ class SiteEnvironment:
             "weather": self.weather,
             "wind_speed_kmh": round(self.wind_speed_kmh, 1),
         }
+
