@@ -24,9 +24,19 @@ void main() async {
     systemNavigationBarIconBrightness: Brightness.light,
   ));
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    print('Error: Firebase initialization failed: $e');
+    print('----------------------------------------------------------------');
+    print('If the error is related to a missing API Key, ensure you are running');
+    print('with the FIREBASE_API_KEY environment variable set.');
+    print('Example: flutter run --dart-define=FIREBASE_API_KEY=YOUR_KEY');
+    print('Or use the helper script: run_mobile.bat YOUR_KEY');
+    print('----------------------------------------------------------------');
+  }
 
   runApp(const HarmonyAuraApp());
 }
