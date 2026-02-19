@@ -9,22 +9,79 @@ import '../services/firebase_service.dart';
 /// Vitals Screen — Personal biometric dashboard for the operator.
 /// Shows CIS gauge, vital signs, and a safety alert overlay when critical.
 
-class VitalsScreen extends StatelessWidget {
+class VitalsScreen extends StatefulWidget {
   final String workerId;
   const VitalsScreen({super.key, required this.workerId});
 
   @override
-  Widget build(BuildContext context) {
-    final firebase = FirebaseService();
+  State<VitalsScreen> createState() => _VitalsScreenState();
+}
 
+class _VitalsScreenState extends State<VitalsScreen> {
+  final FirebaseService _firebase = FirebaseService();
+  String _requestStatus = 'IDLE'; // IDLE, SENDING, PENDING, APPROVED, DENIED
+
+  @override
+  void initState() {
+    super.initState();
+    _listenForRequestStatus();
+  }
+
+  void _listenForRequestStatus() {
+    _firebase.restRequestsStream(widget.workerId).listen((event) {
+      if (!mounted) return;
+      final data = event.snapshot.value;
+      if (data == null) {
+        if (mounted) setState(() => _requestStatus = 'IDLE');
+        return;
+      }
+      // Find the most recent request
+      final map = data as Map;
+      String latest = 'IDLE';
+      int latestTs = 0;
+      for (final entry in map.entries) {
+        final req = entry.value as Map;
+        final ts = (req['timestamp'] ?? 0) as int;
+        if (ts > latestTs) {
+          latestTs = ts;
+          latest = req['status']?.toString() ?? 'PENDING';
+        }
+      }
+      if (mounted) setState(() => _requestStatus = latest);
+    });
+  }
+
+  Future<void> _sendRestRequest(WorkerData worker) async {
+    if (_requestStatus == 'PENDING' || _requestStatus == 'SENDING') return;
+    setState(() => _requestStatus = 'SENDING');
+    try {
+      await _firebase.sendRestRequest(
+        workerId: worker.workerId,
+        workerName: WorkerMappings.getWorkerName(worker.workerId),
+        machineId: worker.assignedMachine,
+        heartRate: worker.heartRate,
+        hrv: worker.hrv,
+        fatigue: worker.fatigue,
+        stress: worker.stress,
+        cisScore: worker.cisScore,
+        cisRiskLevel: worker.cisRiskLevel,
+      );
+      if (mounted) setState(() => _requestStatus = 'PENDING');
+    } catch (_) {
+      if (mounted) setState(() => _requestStatus = 'IDLE');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return StreamBuilder<DatabaseEvent>(
-      stream: firebase.workerStream(workerId),
+      stream: _firebase.workerStream(widget.workerId),
       builder: (context, snapshot) {
         if (!snapshot.hasData || snapshot.data!.snapshot.value == null) {
           return const Center(child: CircularProgressIndicator(color: AuraColors.cyan));
         }
 
-        final worker = WorkerData.fromMap(workerId, snapshot.data!.snapshot.value as Map);
+        final worker = WorkerData.fromMap(widget.workerId, snapshot.data!.snapshot.value as Map);
         return _buildContent(context, worker);
       },
     );
@@ -175,6 +232,14 @@ class VitalsScreen extends StatelessWidget {
                     ),
                   ),
                 ).animate().fadeIn(duration: 400.ms, delay: 500.ms),
+
+                const SizedBox(height: 20),
+
+                // ── REQUEST REST BUTTON ──
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _buildRestRequestButton(worker),
+                ).animate().fadeIn(duration: 400.ms, delay: 600.ms),
               ],
             ),
           ),
@@ -255,6 +320,70 @@ class VitalsScreen extends StatelessWidget {
       case 'Warning': return AuraColors.statusWarning;
       default: return AuraColors.statusSafe;
     }
+  }
+
+  Widget _buildRestRequestButton(WorkerData worker) {
+    final bool isPending = _requestStatus == 'PENDING' || _requestStatus == 'SENDING';
+    final bool isApproved = _requestStatus == 'APPROVED';
+    final bool isDenied = _requestStatus == 'DENIED';
+
+    Color btnColor;
+    String btnLabel;
+    IconData btnIcon;
+
+    if (isApproved) {
+      btnColor = AuraColors.statusSafe;
+      btnLabel = 'REST APPROVED ✓';
+      btnIcon = Icons.check_circle_rounded;
+    } else if (isDenied) {
+      btnColor = AuraColors.statusCritical;
+      btnLabel = 'REQUEST DENIED';
+      btnIcon = Icons.cancel_rounded;
+    } else if (isPending) {
+      btnColor = AuraColors.amber;
+      btnLabel = 'REQUEST PENDING...';
+      btnIcon = Icons.hourglass_top_rounded;
+    } else {
+      btnColor = AuraColors.cyan;
+      btnLabel = 'REQUEST REST';
+      btnIcon = Icons.airline_seat_flat_rounded;
+    }
+
+    return GestureDetector(
+      onTap: isPending || isApproved ? null : () => _sendRestRequest(worker),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              btnColor.withValues(alpha: isPending ? 0.15 : 0.25),
+              btnColor.withValues(alpha: isPending ? 0.05 : 0.10),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: btnColor.withValues(alpha: 0.4), width: 1.5),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(btnIcon, color: btnColor, size: 22),
+            const SizedBox(width: 10),
+            Text(
+              btnLabel,
+              style: TextStyle(
+                color: btnColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

@@ -25,10 +25,10 @@ class WorkerData {
   factory WorkerData.fromMap(String id, Map data) {
     return WorkerData(
       workerId: id,
-      heartRate: (data['heart_rate'] ?? 70).toInt(),
-      hrv: (data['hrv'] ?? 60).toInt(),
-      fatigue: (data['fatigue'] ?? 0).toDouble(),
-      stress: (data['stress'] ?? 0).toDouble(),
+      heartRate: (data['heart_rate_bpm'] ?? 70).toInt(),
+      hrv: (data['hrv_ms'] ?? 60).toInt(),
+      fatigue: (data['fatigue_percent'] ?? 0).toDouble(),
+      stress: (data['stress_percent'] ?? 0).toDouble(),
       cisScore: (data['cis_score'] ?? 0).toDouble(),
       cisRiskLevel: data['cis_risk_level'] ?? 'Safe',
       assignedMachine: data['assigned_machine'] ?? 'Unknown',
@@ -68,7 +68,7 @@ class MachineData {
       engineRpm: (data['engine_rpm'] ?? 0).toInt(),
       engineLoad: (data['engine_load'] ?? 0).toDouble(),
       coolantTemp: (data['coolant_temp'] ?? 25).toDouble(),
-      vibration: (data['vibration'] ?? 0).toDouble(),
+      vibration: (data['vibration_mm_s'] ?? 0).toDouble(),
       stressIndex: (data['stress_index'] ?? 0).toDouble(),
       operatingMode: data['operating_mode'] ?? 'IDLE',
     );

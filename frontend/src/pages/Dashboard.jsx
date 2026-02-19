@@ -6,6 +6,7 @@ import WorkerCard from '../components/WorkerCard';
 import WorkerDetailModal from '../components/WorkerDetailModal';
 import EnvironmentWidget from '../components/EnvironmentWidget';
 import ActionableAlerts from '../components/ActionableAlerts';
+import RestRequestPanel from '../components/RestRequestPanel';
 import Maintenance from './Maintenance';
 import WorkforceView from './WorkforceView';
 import TelemetryView from './TelemetryView';
@@ -14,6 +15,7 @@ import useRealtimeWorkers from '../hooks/useRealtimeWorkers';
 import useRealtimeMachines from '../hooks/useRealtimeMachines';
 import useRealtimeEnvironment from '../hooks/useRealtimeEnvironment';
 import useRealtimeAlerts from '../hooks/useRealtimeAlerts';
+import useRealtimeRestRequests from '../hooks/useRealtimeRestRequests';
 
 import NotificationToast from '../components/NotificationToast';
 import { ref, update, onValue } from 'firebase/database';
@@ -52,6 +54,7 @@ const Dashboard = () => {
     const { machines } = useRealtimeMachines();
     const envData = useRealtimeEnvironment();
     const { alerts } = useRealtimeAlerts();
+    const { requests: restRequests } = useRealtimeRestRequests();
     const [selectedWorkerId, setSelectedWorkerId] = useState(null);
     const [filter, setFilter] = useState('All'); // All, Critical, Warning, Safe
     const [activeTab, setActiveTab] = useState('overview');
@@ -191,6 +194,11 @@ const Dashboard = () => {
                             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
                                 <EnvironmentWidget envData={envData} />
                                 <ActionableAlerts alerts={alerts} />
+                            </div>
+
+                            {/* Rest Requests Panel */}
+                            <div className="mb-8">
+                                <RestRequestPanel requests={restRequests} />
                             </div>
 
                             {/* Grid Layout */}

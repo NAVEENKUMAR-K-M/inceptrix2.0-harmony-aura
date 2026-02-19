@@ -63,4 +63,13 @@ class FirebaseService {
       'status': 'PENDING',
     });
   }
+
+  // ── Operator Rest Requests ──
+  Stream<DatabaseEvent> get restRequestsStream =>
+      _db.child('rest_requests').onValue;
+
+  /// Update a rest request status (APPROVED / DENIED)
+  Future<void> updateRestRequestStatus(String requestId, String status) async {
+    await _db.child('rest_requests/$requestId/status').set(status);
+  }
 }

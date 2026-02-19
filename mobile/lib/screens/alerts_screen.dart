@@ -21,6 +21,7 @@ class AlertsScreen extends StatelessWidget {
         child: Column(
           children: [
             _buildHeader(firebase),
+            _buildRestRequests(firebase),
             _buildRecommendations(firebase),
             Expanded(child: _buildAlertList(firebase)),
           ],
@@ -83,6 +84,93 @@ class AlertsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRestRequests(FirebaseService firebase) {
+    return StreamBuilder<DatabaseEvent>(
+      stream: firebase.restRequestsStream,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.snapshot.value == null) {
+          return const SizedBox.shrink();
+        }
+
+        final data = snapshot.data!.snapshot.value as Map;
+        // Filter to only PENDING requests
+        final pending = <String, Map>{};
+        data.forEach((key, value) {
+          if (value is Map && value['status'] == 'PENDING') {
+            pending[key.toString()] = Map<String, dynamic>.from(value);
+          }
+        });
+
+        if (pending.isEmpty) return const SizedBox.shrink();
+
+        return Container(
+          constraints: const BoxConstraints(maxHeight: 220),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Section Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 6, height: 6,
+                      decoration: const BoxDecoration(
+                        color: AuraColors.cyan,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'OPERATOR REST REQUESTS',
+                      style: TextStyle(
+                        color: AuraColors.cyan,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AuraColors.cyan.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '${pending.length} PENDING',
+                        style: const TextStyle(color: AuraColors.cyan, fontSize: 9, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Request Cards
+              Flexible(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: pending.entries.map((e) {
+                    return _RestRequestCard(
+                      requestId: e.key,
+                      data: e.value,
+                      firebase: firebase,
+                    );
+                  }).toList(),
+                ),
+              ),
+              Container(
+                height: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                color: AuraColors.border,
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -572,6 +660,206 @@ class _RecommendationCardState extends State<_RecommendationCard> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Rest Request Card (Supervisor → Approve/Deny) ──
+class _RestRequestCard extends StatefulWidget {
+  final String requestId;
+  final Map data;
+  final FirebaseService firebase;
+
+  const _RestRequestCard({
+    required this.requestId,
+    required this.data,
+    required this.firebase,
+  });
+
+  @override
+  State<_RestRequestCard> createState() => _RestRequestCardState();
+}
+
+class _RestRequestCardState extends State<_RestRequestCard> {
+  bool _acted = false;
+  String _actionLabel = '';
+
+  Future<void> _approve() async {
+    if (_acted) return;
+    setState(() { _acted = true; _actionLabel = 'APPROVED ✓'; });
+
+    await widget.firebase.updateRestRequestStatus(widget.requestId, 'APPROVED');
+
+    // Also dispatch a FORCE_BREAK command so the simulation responds
+    final workerId = widget.data['worker_id']?.toString() ?? '';
+    await widget.firebase.sendCommand(
+      action: 'ASSIGN 15-MIN MANDATORY BREAK',
+      targetType: 'worker',
+      targetId: workerId,
+      severity: 'WARNING',
+      durationS: 900, // 15 min break
+    );
+  }
+
+  Future<void> _deny() async {
+    if (_acted) return;
+    setState(() { _acted = true; _actionLabel = 'DENIED'; });
+    await widget.firebase.updateRestRequestStatus(widget.requestId, 'DENIED');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = widget.data['worker_name']?.toString() ?? widget.data['worker_id']?.toString() ?? 'Unknown';
+    final workerId = widget.data['worker_id']?.toString() ?? '';
+    final machineId = widget.data['machine_id']?.toString() ?? '';
+    final vitals = widget.data['vitals'] as Map? ?? {};
+    final hr = vitals['heart_rate'] ?? 0;
+    final fatigue = (vitals['fatigue'] ?? 0).toDouble();
+    final cis = (vitals['cis_score'] ?? 0).toDouble();
+    final riskLevel = vitals['cis_risk_level']?.toString() ?? 'Safe';
+
+    final riskColor = riskLevel == 'Critical'
+        ? AuraColors.statusCritical
+        : riskLevel == 'Warning'
+            ? AuraColors.statusWarning
+            : AuraColors.statusSafe;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AuraColors.cyan.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AuraColors.cyan.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: Name + Worker ID
+          Row(
+            children: [
+              const Icon(Icons.airline_seat_flat_rounded, size: 16, color: AuraColors.cyan),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '$name requests rest',
+                  style: const TextStyle(color: AuraColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: riskColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  riskLevel.toUpperCase(),
+                  style: TextStyle(color: riskColor, fontSize: 8, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Vitals snapshot row
+          Row(
+            children: [
+              _miniChip(Icons.person_rounded, workerId, AuraColors.cyan),
+              const SizedBox(width: 6),
+              _miniChip(Icons.favorite_rounded, '${hr} BPM', Colors.redAccent),
+              const SizedBox(width: 6),
+              _miniChip(Icons.bolt_rounded, '${fatigue.toStringAsFixed(0)}% Fatigue', AuraColors.amber),
+              const SizedBox(width: 6),
+              _miniChip(Icons.shield_rounded, 'CIS ${cis.toStringAsFixed(2)}', riskColor),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          // Machine chip
+          _miniChip(Icons.precision_manufacturing_rounded, machineId, AuraColors.emerald),
+          const SizedBox(height: 10),
+
+          // Action Buttons
+          if (_acted)
+            Center(
+              child: Text(
+                _actionLabel,
+                style: TextStyle(
+                  color: _actionLabel.contains('APPROVED') ? AuraColors.statusSafe : AuraColors.statusCritical,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _approve,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AuraColors.statusSafe.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AuraColors.statusSafe.withValues(alpha: 0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_rounded, size: 14, color: AuraColors.statusSafe),
+                          SizedBox(width: 4),
+                          Text('APPROVE', style: TextStyle(color: AuraColors.statusSafe, fontSize: 11, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _deny,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AuraColors.statusCritical.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AuraColors.statusCritical.withValues(alpha: 0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.close_rounded, size: 14, color: AuraColors.statusCritical),
+                          SizedBox(width: 4),
+                          Text('DENY', style: TextStyle(color: AuraColors.statusCritical, fontSize: 11, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniChip(IconData icon, String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 9, color: color.withValues(alpha: 0.7)),
+          const SizedBox(width: 3),
+          Text(text, style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w600)),
         ],
       ),
     );
