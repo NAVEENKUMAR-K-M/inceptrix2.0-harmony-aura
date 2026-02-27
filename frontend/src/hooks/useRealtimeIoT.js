@@ -1,20 +1,30 @@
 import { useState, useEffect } from 'react';
 import { ref, onValue, off } from 'firebase/database';
 import { db } from '../firebase/config';
+import { decryptEnvelope, isEncrypted } from '../utils/cryptoProvider';
 
 /**
- * useRealtimeIoT — Firebase Realtime hook for IoT data.
- * 
- * Listens to three Firebase paths simultaneously:
- *   - site/iot/vitals              (ESP32 wearable sensor data)
- *   - site/iot/edge_intelligence   (ESP32-S3 computed CIS/PdM)
- *   - site/iot/status              (device heartbeat/online status)
+ * useRealtimeIoT — Firebase Realtime hook for IoT data (E2EE).
+ *
+ * Listens to three Firebase paths:
+ *   - site/iot/vitals              (ENCRYPTED — ESP32 wearable sensor data)
+ *   - site/iot/edge_intelligence   (ENCRYPTED — ESP32-S3 computed CIS/PdM)
+ *   - site/iot/status              (Unencrypted — device heartbeat/online)
+ *
+ * Automatically detects encrypted envelopes and decrypts them
+ * before updating React state. Falls back to raw data if no
+ * encryption is detected (backward compatible).
  */
 const useRealtimeIoT = () => {
     const [vitals, setVitals] = useState(null);
     const [edgeIntelligence, setEdgeIntelligence] = useState(null);
     const [deviceStatus, setDeviceStatus] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [securityStatus, setSecurityStatus] = useState({
+        vitalsEncrypted: false,
+        edgeEncrypted: false,
+        tamperDetected: false,
+    });
 
     useEffect(() => {
         const vitalsRef = ref(db, 'site/iot/vitals');
@@ -28,18 +38,58 @@ const useRealtimeIoT = () => {
             }
         };
 
-        const vitalsHandler = (snapshot) => {
-            setVitals(snapshot.val());
+        // ── Vitals handler (with E2EE decryption) ──
+        const vitalsHandler = async (snapshot) => {
+            const raw = snapshot.val();
             loaded.vitals = true;
             checkLoaded();
+
+            if (!raw) { setVitals(null); return; }
+
+            if (isEncrypted(raw)) {
+                // Data is encrypted — decrypt it
+                const decrypted = await decryptEnvelope(raw.s);
+                if (decrypted) {
+                    setVitals(decrypted);
+                    setSecurityStatus(prev => ({ ...prev, vitalsEncrypted: true, tamperDetected: false }));
+                } else {
+                    // Decryption failed — possible tamper
+                    console.error('[IoT Hook] Vitals decryption failed!');
+                    setSecurityStatus(prev => ({ ...prev, vitalsEncrypted: true, tamperDetected: true }));
+                    setVitals(null);
+                }
+            } else {
+                // Legacy unencrypted data (backward compatible)
+                setVitals(raw);
+                setSecurityStatus(prev => ({ ...prev, vitalsEncrypted: false }));
+            }
         };
 
-        const edgeHandler = (snapshot) => {
-            setEdgeIntelligence(snapshot.val());
+        // ── Edge Intelligence handler (with E2EE decryption) ──
+        const edgeHandler = async (snapshot) => {
+            const raw = snapshot.val();
             loaded.edge = true;
             checkLoaded();
+
+            if (!raw) { setEdgeIntelligence(null); return; }
+
+            if (isEncrypted(raw)) {
+                const decrypted = await decryptEnvelope(raw.s);
+                if (decrypted) {
+                    setEdgeIntelligence(decrypted);
+                    setSecurityStatus(prev => ({ ...prev, edgeEncrypted: true, tamperDetected: false }));
+                } else {
+                    console.error('[IoT Hook] Edge intelligence decryption failed!');
+                    setSecurityStatus(prev => ({ ...prev, edgeEncrypted: true, tamperDetected: true }));
+                    setEdgeIntelligence(null);
+                }
+            } else {
+                setEdgeIntelligence(raw);
+                setSecurityStatus(prev => ({ ...prev, edgeEncrypted: false }));
+            }
         };
 
+        // ── Status handler (never encrypted) ──
         const statusHandler = (snapshot) => {
             setDeviceStatus(snapshot.val());
             loaded.status = true;
@@ -50,7 +100,6 @@ const useRealtimeIoT = () => {
         onValue(edgeRef, edgeHandler);
         onValue(statusRef, statusHandler);
 
-        // Timeout: stop loading after 5s even if no data
         const timeout = setTimeout(() => setLoading(false), 5000);
 
         return () => {
@@ -61,7 +110,7 @@ const useRealtimeIoT = () => {
         };
     }, []);
 
-    return { vitals, edgeIntelligence, deviceStatus, loading };
+    return { vitals, edgeIntelligence, deviceStatus, loading, securityStatus };
 };
 
 export default useRealtimeIoT;

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     Cpu, Heart, Thermometer, Droplets, Wind, Activity, Gauge,
     Wifi, WifiOff, Radio, Shield, AlertTriangle, TrendingDown,
-    Zap, BarChart3, CircuitBoard, Server, ArrowRight, ChevronRight
+    Zap, BarChart3, CircuitBoard, Server, ArrowRight, ChevronRight,
+    Lock, LockOpen, ShieldAlert
 } from 'lucide-react';
 import useRealtimeIoT from '../hooks/useRealtimeIoT';
 
@@ -141,7 +142,11 @@ const MiniSparkline = ({ data = [], color = '#10B981', height = 32 }) => {
 // ═══════════════════════════════════════════════════
 
 const IoTOperations = () => {
-    const { vitals, edgeIntelligence, deviceStatus, loading } = useRealtimeIoT();
+    const { vitals, edgeIntelligence, deviceStatus, loading, securityStatus } = useRealtimeIoT();
+
+    // E2EE status
+    const isE2EE = securityStatus.vitalsEncrypted || securityStatus.edgeEncrypted;
+    const isTampered = securityStatus.tamperDetected;
 
     // History buffer for sparklines (last 30 readings)
     const hrHistoryRef = useRef([]);
@@ -209,6 +214,19 @@ const IoTOperations = () => {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
+                    {/* E2EE Security Badge */}
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all duration-500
+                        ${isTampered ? 'bg-red-500/15 border-red-500/40' :
+                            isE2EE ? 'bg-emerald-500/10 border-emerald-500/30' :
+                                'bg-white/[0.03] border-white/[0.06]'}`}>
+                        {isTampered ? <ShieldAlert size={12} className="text-red-400 animate-pulse" /> :
+                            isE2EE ? <Lock size={12} className="text-emerald-400" /> :
+                                <LockOpen size={12} className="text-textDim" />}
+                        <span className={`text-[10px] font-bold uppercase tracking-wider
+                            ${isTampered ? 'text-red-400' : isE2EE ? 'text-emerald-400' : 'text-textDim'}`}>
+                            {isTampered ? 'TAMPER!' : isE2EE ? 'AES-256 E2EE' : 'UNENCRYPTED'}
+                        </span>
+                    </div>
                     <DeviceStatusBadge online={wearableOnline} label="Wearable" />
                     <DeviceStatusBadge online={edgeOnline} label="Edge S3" />
                 </div>
@@ -222,10 +240,13 @@ const IoTOperations = () => {
                         <span className="text-xs font-mono">ESP32 Wearable</span>
                     </div>
                     <ChevronRight size={14} className="text-white/20" />
+                    {isE2EE && <Lock size={10} className="text-emerald-400" />}
                     <div className="flex items-center gap-2">
                         <Server size={14} className="text-amber-400" />
                         <span className="text-xs font-mono">Firebase RTDB</span>
+                        {isE2EE && <span className="text-[8px] text-emerald-400/60 font-mono">(encrypted)</span>}
                     </div>
+                    {isE2EE && <Lock size={10} className="text-emerald-400" />}
                     <ChevronRight size={14} className="text-white/20" />
                     <div className="flex items-center gap-2">
                         <Cpu size={14} className={edgeOnline ? 'text-indigo-400 animate-pulse' : 'text-textDim'} />
