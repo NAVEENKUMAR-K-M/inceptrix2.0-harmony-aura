@@ -11,6 +11,7 @@ import Maintenance from './Maintenance';
 import WorkforceView from './WorkforceView';
 import TelemetryView from './TelemetryView';
 import AnalyticsView from './AnalyticsView';
+import IoTOperations from './IoTOperations';
 import useRealtimeWorkers from '../hooks/useRealtimeWorkers';
 import useRealtimeMachines from '../hooks/useRealtimeMachines';
 import useRealtimeEnvironment from '../hooks/useRealtimeEnvironment';
@@ -143,6 +144,8 @@ const Dashboard = () => {
                         <TelemetryView />
                     ) : activeTab === 'analytics' ? (
                         <AnalyticsView />
+                    ) : activeTab === 'iot' ? (
+                        <IoTOperations />
                     ) : (
                         <>
                             {/* Dashboard Header / Filter Bar */}

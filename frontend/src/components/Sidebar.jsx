@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, Activity, Settings, BarChart3, ShieldCheck, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Activity, Settings, BarChart3, ShieldCheck, LogOut, CircuitBoard } from 'lucide-react';
 
 const NavItem = ({ icon: Icon, label, active, onClick }) => (
     <button
@@ -60,6 +60,12 @@ const Sidebar = ({ activeTab = 'overview', onTabChange }) => {
                     label="Maintenance"
                     active={activeTab === 'maintenance'}
                     onClick={() => onTabChange('maintenance')}
+                />
+                <NavItem
+                    icon={CircuitBoard}
+                    label="IoT Operations"
+                    active={activeTab === 'iot'}
+                    onClick={() => onTabChange('iot')}
                 />
             </div>
 
