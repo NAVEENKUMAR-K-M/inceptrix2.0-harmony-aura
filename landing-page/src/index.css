@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════
+   Harmony Aura — Landing Page Design System
+   ═══════════════════════════════════════════════════ */
+
+@theme {
+  /* Colors */
+  --color-background: #06080f;
+  --color-surface: #0c1018;
+  --color-surfaceLight: #121824;
+  --color-primary: #10b981;
+  --color-primaryDark: #059669;
+  --color-accent: #38bdf8;
+  --color-accentDark: #0284c7;
+  --color-textMain: #f1f5f9;
+  --color-textSecondary: #94a3b8;
+  --color-textDim: #475569;
+  --color-critical: #ef4444;
+  --color-warning: #f59e0b;
+
+  /* Fonts */
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* Global Resets */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-background);
+  color: var(--color-textMain);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(16, 185, 129, 0.3);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-textDim);
+  border-radius: 3px;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(12, 16, 24, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #10b981, #38bdf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow utility */
+.glow-primary {
+  box-shadow: 0 0 40px rgba(16, 185, 129, 0.15), 0 0 80px rgba(16, 185, 129, 0.05);
+}
+
+.glow-accent {
+  box-shadow: 0 0 40px rgba(56, 189, 248, 0.15), 0 0 80px rgba(56, 189, 248, 0.05);
+}
