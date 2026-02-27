@@ -2,34 +2,34 @@
 
 /* ═══════════════════════════════════════════════════
    Harmony Aura — Landing Page Design System
+   Theme: Industrial Cyber-Security
    ═══════════════════════════════════════════════════ */
 
 @theme {
-  /* Colors */
-  --color-background: #06080f;
-  --color-surface: #0c1018;
-  --color-surfaceLight: #121824;
-  --color-primary: #10b981;
-  --color-primaryDark: #059669;
-  --color-accent: #38bdf8;
-  --color-accentDark: #0284c7;
-  --color-textMain: #f1f5f9;
-  --color-textSecondary: #94a3b8;
-  --color-textDim: #475569;
+  --color-background: #0a0e17;
+  --color-surface: #111827;
+  --color-surface-light: #1a2332;
+  --color-primary: #10B981;
+  --color-primary-dim: #059669;
+  --color-cyan: #06b6d4;
+  --color-amber: #f59e0b;
   --color-critical: #ef4444;
-  --color-warning: #f59e0b;
+  --color-text-main: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-dim: #475569;
+  --color-border: rgba(255, 255, 255, 0.06);
 
-  /* Fonts */
-  --font-display: 'Outfit', system-ui, sans-serif;
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-display: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
 }
 
-/* Global Resets */
-* {
+/* ── Global Reset ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
 html {
@@ -37,19 +37,15 @@ html {
 }
 
 body {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   background-color: var(--color-background);
-  color: var(--color-textMain);
+  color: var(--color-text-main);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
 }
 
-::selection {
-  background: rgba(16, 185, 129, 0.3);
-}
-
-/* Custom scrollbar */
+/* ── Scrollbar ── */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -59,42 +55,79 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-textDim);
+  background: var(--color-text-dim);
   border-radius: 3px;
 }
 
-/* ═════════════════════════════════════════
-   Glassmorphism Utilities (plain CSS)
-   ═════════════════════════════════════════ */
-
-.glass {
-  background: rgba(12, 16, 24, 0.5);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+/* ── Selection ── */
+::selection {
+  background: rgba(16, 185, 129, 0.3);
+  color: #fff;
 }
 
-.glass-nav {
-  background: rgba(6, 8, 15, 0.8);
+/* ── Glassmorphism ── */
+.glass {
+  background: rgba(17, 24, 39, 0.6);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* Gradient text utility */
+/* ── Gradient Text ── */
 .gradient-text {
-  background: linear-gradient(135deg, #10b981, #38bdf8 70%, #818cf8);
+  background: linear-gradient(135deg, #10B981 0%, #06b6d4 50%, #818cf8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Glow utility */
-.glow-primary {
-  box-shadow: 0 0 40px rgba(16, 185, 129, 0.15), 0 0 80px rgba(16, 185, 129, 0.05);
+/* ── Pulse Glow ── */
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(16, 185, 129, 0.3);
+  }
 }
 
-.glow-accent {
-  box-shadow: 0 0 40px rgba(56, 189, 248, 0.15), 0 0 80px rgba(56, 189, 248, 0.05);
+.pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* ── Float Animation ── */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* ── Grid Background ── */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ── Radial Glow ── */
+.hero-glow {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
+  pointer-events: none;
 }
