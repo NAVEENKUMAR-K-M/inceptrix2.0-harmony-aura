@@ -109,16 +109,16 @@ const InteractiveGlobe = ({
         if (!ctx) return;
 
         const dpr = window.devicePixelRatio || 1;
-        const w = canvas.clientWidth;
-        const h = canvas.clientHeight;
+        const w = (canvas.parentElement?.clientWidth || size) - 40;
+        const h = w; // Keep it square based on width
         canvas.width = w * dpr;
         canvas.height = h * dpr;
         ctx.scale(dpr, dpr);
 
         const cx = w / 2;
         const cy = h / 2;
-        const radius = Math.min(w, h) * 0.38;
-        const fov = 600;
+        const radius = Math.min(w, h) * 0.42;
+        const fov = 800;
 
         // Auto rotate
         if (!dragRef.current.active) {
@@ -132,7 +132,7 @@ const InteractiveGlobe = ({
 
         // Outer glow
         const glowGrad = ctx.createRadialGradient(cx, cy, radius * 0.8, cx, cy, radius * 1.5);
-        glowGrad.addColorStop(0, 'rgba(16, 185, 129, 0.04)');
+        glowGrad.addColorStop(0, 'rgba(16, 185, 129, 0.08)');
         glowGrad.addColorStop(1, 'rgba(16, 185, 129, 0)');
         ctx.fillStyle = glowGrad;
         ctx.fillRect(0, 0, w, h);
@@ -140,7 +140,7 @@ const InteractiveGlobe = ({
         // Globe outline
         ctx.beginPath();
         ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(16, 185, 129, 0.08)';
+        ctx.strokeStyle = 'rgba(16, 185, 129, 0.15)';
         ctx.lineWidth = 1;
         ctx.stroke();
 

@@ -38,7 +38,7 @@ const HeroSection = () => {
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-4">
           {/* Left Content */}
           <div className="flex-1 max-w-2xl">
-            <div className="hero-badge inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/[0.06] px-4 py-1.5 text-xs font-mono text-primary mb-8">
+            <div className="hero-badge inline-flex items-center gap-2 rounded-full border border-primary/20 glass-nav px-4 py-1.5 text-xs font-mono text-primary mb-8 glow-primary">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               Edge AI · AES-256 Encrypted · Real-Time
             </div>
@@ -80,10 +80,6 @@ const HeroSection = () => {
             </div>
           </div>
 
-          {/* Right — Globe */}
-          <div className="hero-globe flex-1 flex items-center justify-center min-h-[420px] lg:min-h-0">
-            <InteractiveGlobe size={520} />
-          </div>
         </div>
       </div>
     </section>
@@ -153,9 +149,9 @@ const FeaturesSection = () => {
   }, []);
 
   return (
-    <section id="features" ref={sectionRef} className="py-32 relative">
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-        <div className="text-center mb-20">
+    <section id="features" ref={sectionRef} className="section-padding relative">
+      <div className="container-width z-10 relative">
+        <div className="text-center mb-24">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-xs font-mono text-textDim uppercase tracking-widest mb-6">
             <CircuitBoard size={12} className="text-primary" />
             The Technology
@@ -168,14 +164,14 @@ const FeaturesSection = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, i) => (
-            <div key={i} className={`feature-card group glass rounded-2xl p-8 transition-all duration-500 hover:-translate-y-1 ${feature.glow}`}>
-              <div className={`w-12 h-12 rounded-xl bg-white/[0.04] flex items-center justify-center mb-6 border border-white/[0.06] ${feature.color}`}>
-                <feature.icon size={22} />
+            <div key={i} className={`feature-card group glass rounded-3xl p-10 transition-all duration-500 hover:-translate-y-2 border border-white/5 hover:border-white/10 ${feature.glow}`}>
+              <div className={`w-14 h-14 rounded-2xl glass flex items-center justify-center mb-8 ${feature.color}`}>
+                <feature.icon size={26} />
               </div>
-              <h3 className="text-lg font-display font-bold text-white mb-3">{feature.title}</h3>
-              <p className="text-sm text-textSecondary leading-relaxed">{feature.description}</p>
+              <h3 className="text-xl font-display font-extrabold text-white mb-4 tracking-tight">{feature.title}</h3>
+              <p className="text-textSecondary leading-relaxed">{feature.description}</p>
             </div>
           ))}
         </div>
@@ -189,13 +185,13 @@ const FeaturesSection = () => {
 // ═══════════════════════════════════════════════════
 
 const DataFlowSection = () => (
-  <section className="py-24 relative overflow-hidden">
+  <section className="section-padding relative overflow-hidden bg-surfaceLight/30 border-y border-white/[0.02]">
     <div className="absolute inset-0 pointer-events-none">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full bg-primary/[0.02] blur-[100px]" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full bg-primary/[0.02] blur-[120px]" />
     </div>
 
-    <div className="max-w-[1200px] mx-auto px-6 lg:px-12 relative z-10">
-      <div className="text-center mb-16">
+    <div className="container-width relative z-10">
+      <div className="text-center mb-20">
         <h2 className="text-3xl md:text-4xl font-display font-bold text-white tracking-tight mb-4">
           The Encrypted <span className="gradient-text">Data Pipeline</span>
         </h2>
@@ -204,7 +200,12 @@ const DataFlowSection = () => (
         </p>
       </div>
 
-      <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6">
+      <div className="relative flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 max-w-5xl mx-auto">
+        {/* Connection Line (Desktop only) */}
+        <div className="hidden md:block absolute top-[42px] left-[6%] right-[6%] h-[2px] bg-white/[0.05] z-0">
+          <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-primary/50 to-transparent -translate-x-full animate-[shimmer_3s_infinite]" />
+        </div>
+
         {[
           { icon: ThermometerSun, label: 'ESP32 Wearable', sub: 'Sensors + Encrypt', color: 'text-cyan-400', border: 'border-cyan-500/20' },
           { icon: Lock, label: 'AES-256-GCM', sub: 'Encrypted Transit', color: 'text-emerald-400', border: 'border-emerald-500/20' },
@@ -213,13 +214,13 @@ const DataFlowSection = () => (
           { icon: Cpu, label: 'ESP32-S3 Edge', sub: 'Decrypt + Compute', color: 'text-indigo-400', border: 'border-indigo-500/20' },
           { icon: Eye, label: 'Dashboard', sub: 'Decrypt + Display', color: 'text-primary', border: 'border-primary/20' },
         ].map((step, i) => (
-          <div key={i} className="flex items-center gap-4 md:gap-6">
-            <div className={`glass rounded-xl p-5 text-center min-w-[130px] border ${step.border}`}>
-              <step.icon size={24} className={`${step.color} mx-auto mb-2`} />
-              <p className="text-xs font-bold text-white">{step.label}</p>
-              <p className="text-[10px] text-textDim font-mono mt-1">{step.sub}</p>
+          <div key={i} className="relative z-10 w-full md:w-auto flex flex-col items-center">
+            <div className={`glass rounded-2xl p-6 text-center w-full md:w-[150px] border ${step.border} transition-transform hover:-translate-y-2`}>
+              <step.icon size={28} className={`${step.color} mx-auto mb-4 drop-shadow-[0_0_8px_currentColor]`} />
+              <p className="text-sm font-bold text-white tracking-tight">{step.label}</p>
+              <p className="text-[10px] text-textDim font-mono mt-2 uppercase tracking-wide">{step.sub}</p>
             </div>
-            {i < 5 && <ChevronRight size={16} className="text-white/15 hidden md:block" />}
+            {i < 5 && <ChevronRight size={20} className="text-white/20 mt-4 md:hidden" />}
           </div>
         ))}
       </div>
@@ -293,13 +294,13 @@ const plans = [
 ];
 
 const PricingSection = () => (
-  <section id="pricing" className="py-32 relative">
+  <section id="pricing" className="section-padding relative">
     <div className="absolute inset-0 pointer-events-none">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full bg-primary/[0.03] blur-[120px]" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] rounded-full bg-primary/[0.03] blur-[150px]" />
     </div>
 
-    <div className="max-w-[1200px] mx-auto px-6 lg:px-12 relative z-10">
-      <div className="text-center mb-20">
+    <div className="container-width relative z-10">
+      <div className="text-center mb-24">
         <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-xs font-mono text-textDim uppercase tracking-widest mb-6">
           <Zap size={12} className="text-warning" />
           Pricing
@@ -312,11 +313,11 @@ const PricingSection = () => (
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10 max-w-6xl mx-auto">
         {plans.map((plan, i) => (
-          <div key={i} className={`relative glass rounded-2xl p-8 border ${plan.borderColor} transition-all duration-500 hover:-translate-y-2 ${plan.popular ? 'glow-primary' : ''}`}>
+          <div key={i} className={`relative glass rounded-3xl p-10 border ${plan.borderColor} transition-all duration-500 hover:-translate-y-3 ${plan.popular ? 'glow-primary shadow-2xl shadow-primary/10' : ''}`}>
             {plan.popular && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-4 py-1 rounded-full bg-primary text-white text-xs font-bold uppercase tracking-wider">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-5 py-2 rounded-full bg-primary text-white text-[11px] font-extrabold uppercase tracking-widest shadow-lg shadow-primary/20 border border-white/20">
                 <Star size={10} /> Most Popular
               </div>
             )}
@@ -355,9 +356,9 @@ const PricingSection = () => (
 // ═══════════════════════════════════════════════════
 
 const Footer = () => (
-  <footer className="border-t border-white/[0.04] py-16">
-    <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-      <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+  <footer className="border-t border-white/[0.05] py-20 bg-surface/50">
+    <div className="container-width">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-8">
         <div>
           <h3 className="font-display font-extrabold text-2xl text-white tracking-tight">
             Harmony<span className="text-primary">Aura</span>
@@ -387,8 +388,8 @@ const Footer = () => (
 // ═══════════════════════════════════════════════════
 
 const Navbar = () => (
-  <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/[0.04]">
-    <div className="max-w-[1400px] mx-auto px-6 lg:px-12 flex items-center justify-between h-16">
+  <nav className="fixed top-0 left-0 right-0 z-50 glass-nav border-b border-white/[0.05]">
+    <div className="container-width flex items-center justify-between h-20">
       <div className="flex items-center gap-2">
         <Shield size={20} className="text-primary" />
         <span className="font-display font-extrabold text-lg text-white tracking-tight">
