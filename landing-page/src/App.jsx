@@ -8,6 +8,31 @@ import {
 import InteractiveGlobe from './components/InteractiveGlobe';
 
 // ═══════════════════════════════════════════════════
+//  NAVBAR
+// ═══════════════════════════════════════════════════
+
+const Navbar = () => (
+  <nav className="fixed top-0 left-0 right-0 z-50 glass-nav">
+    <div className="max-w-[1400px] mx-auto px-6 lg:px-16 flex items-center justify-between h-20">
+      <div className="flex items-center gap-2.5">
+        <Shield size={22} className="text-primary" />
+        <span className="font-display font-extrabold text-xl text-white tracking-tight">
+          Harmony<span className="text-primary">Aura</span>
+        </span>
+      </div>
+      <div className="hidden md:flex items-center gap-10 text-sm text-textSecondary font-medium">
+        <a href="#features" className="hover:text-white transition-colors duration-200">Features</a>
+        <a href="#pricing" className="hover:text-white transition-colors duration-200">Pricing</a>
+        <a href="#" className="hover:text-white transition-colors duration-200">Docs</a>
+      </div>
+      <a href="#pricing" className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primaryDark text-white text-sm font-bold transition-all duration-300 hover:shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+        Get Started
+      </a>
+    </div>
+  </nav>
+);
+
+// ═══════════════════════════════════════════════════
 //  HERO SECTION
 // ═══════════════════════════════════════════════════
 
@@ -21,24 +46,24 @@ const HeroSection = () => {
       gsap.from('.hero-subtitle', { y: 30, opacity: 0, duration: 0.7, delay: 0.6 });
       gsap.from('.hero-cta', { y: 20, opacity: 0, duration: 0.6, delay: 0.8 });
       gsap.from('.hero-stats > div', { y: 30, opacity: 0, duration: 0.5, stagger: 0.1, delay: 1.0 });
-      gsap.from('.hero-globe', { scale: 0.8, opacity: 0, duration: 1.2, delay: 0.3, ease: 'power3.out' });
+      gsap.from('.hero-globe', { scale: 0.85, opacity: 0, duration: 1.2, delay: 0.3, ease: 'power3.out' });
     }, heroRef);
     return () => ctx.revert();
   }, []);
 
   return (
-    <section ref={heroRef} className="relative min-h-screen flex items-center overflow-hidden">
+    <section ref={heroRef} className="relative min-h-screen flex items-center overflow-hidden pt-20">
       {/* Background Effects */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 -left-40 w-[600px] h-[600px] rounded-full bg-primary/[0.04] blur-[120px]" />
         <div className="absolute bottom-1/4 -right-40 w-[500px] h-[500px] rounded-full bg-accent/[0.03] blur-[100px]" />
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-12 w-full relative z-10">
-        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-4">
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-16 w-full relative z-10">
+        <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-12">
           {/* Left Content */}
-          <div className="flex-1 max-w-2xl">
-            <div className="hero-badge inline-flex items-center gap-2 rounded-full border border-primary/20 glass-nav px-4 py-1.5 text-xs font-mono text-primary mb-8 glow-primary">
+          <div className="flex-1 max-w-2xl lg:pr-8">
+            <div className="hero-badge inline-flex items-center gap-2 rounded-full border border-primary/20 glass px-4 py-1.5 text-xs font-mono text-primary mb-8">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               Edge AI · AES-256 Encrypted · Real-Time
             </div>
@@ -56,7 +81,7 @@ const HeroSection = () => {
               for industrial workforces. Every heartbeat. Every machine pulse. Secured.
             </p>
 
-            <div className="hero-cta flex items-center gap-4 mb-12">
+            <div className="hero-cta flex flex-wrap items-center gap-4 mb-12">
               <a href="#pricing" className="group flex items-center gap-3 px-8 py-4 rounded-xl bg-primary hover:bg-primaryDark text-white font-bold text-sm tracking-wide transition-all duration-300 glow-primary hover:shadow-[0_0_60px_rgba(16,185,129,0.25)]">
                 Start Free Trial
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
@@ -66,20 +91,24 @@ const HeroSection = () => {
               </a>
             </div>
 
-            <div className="hero-stats flex items-center gap-8">
+            <div className="hero-stats flex items-center gap-10">
               {[
                 { value: '73%', label: 'Fewer Incidents' },
                 { value: '<50ms', label: 'Edge Latency' },
                 { value: 'AES-256', label: 'Encryption' },
               ].map((stat, i) => (
-                <div key={i}>
+                <div key={i} className="flex flex-col">
                   <p className="text-2xl font-bold font-mono text-white">{stat.value}</p>
-                  <p className="text-xs text-textDim font-mono uppercase tracking-wider mt-1">{stat.label}</p>
+                  <p className="text-[10px] text-textDim font-mono uppercase tracking-widest mt-1">{stat.label}</p>
                 </div>
               ))}
             </div>
           </div>
 
+          {/* Right — Interactive Globe */}
+          <div className="hero-globe flex-1 flex items-center justify-center w-full max-w-[560px]">
+            <InteractiveGlobe size={520} />
+          </div>
         </div>
       </div>
     </section>
@@ -96,42 +125,36 @@ const features = [
     title: 'Wearable Biometrics',
     description: 'Real-time heart rate, body temperature, and impact detection from ESP32 wearables.',
     color: 'text-red-400',
-    glow: 'group-hover:shadow-[0_0_40px_rgba(248,113,113,0.1)]',
   },
   {
     icon: Cpu,
     title: 'Edge Intelligence',
     description: 'On-device CIS & PdM computation on ESP32-S3. Safety decisions in <1ms, no cloud dependency.',
     color: 'text-indigo-400',
-    glow: 'group-hover:shadow-[0_0_40px_rgba(129,140,248,0.1)]',
   },
   {
     icon: Lock,
     title: 'AES-256 E2EE',
     description: 'Military-grade encryption from sensor to dashboard. Zero plaintext on the wire. Ever.',
     color: 'text-emerald-400',
-    glow: 'group-hover:shadow-[0_0_40px_rgba(52,211,153,0.1)]',
   },
   {
     icon: Activity,
     title: 'Predictive Maintenance',
     description: 'Multi-factor machine health scoring. Know about failures weeks before they happen.',
     color: 'text-amber-400',
-    glow: 'group-hover:shadow-[0_0_40px_rgba(251,191,36,0.1)]',
   },
   {
     icon: Eye,
     title: 'Real-Time Overwatch',
     description: 'Live dashboard with CIS gauges, PdM health bars, and workforce-wide threat mapping.',
     color: 'text-cyan-400',
-    glow: 'group-hover:shadow-[0_0_40px_rgba(34,211,238,0.1)]',
   },
   {
     icon: Wifi,
     title: 'Digital Twin Simulation',
     description: 'Physics-based site simulation for war-gaming emergency scenarios before they happen.',
     color: 'text-violet-400',
-    glow: 'group-hover:shadow-[0_0_40px_rgba(167,139,250,0.1)]',
   },
 ];
 
@@ -141,37 +164,41 @@ const FeaturesSection = () => {
   useEffect(() => {
     const ctx = gsap.context(() => {
       gsap.from('.feature-card', {
-        scrollTrigger: { trigger: sectionRef.current, start: 'top 80%' },
-        y: 50, opacity: 0, duration: 0.6, stagger: 0.1,
+        y: 40, opacity: 0, duration: 0.5, stagger: 0.08,
       });
     }, sectionRef);
     return () => ctx.revert();
   }, []);
 
   return (
-    <section id="features" ref={sectionRef} className="section-padding relative">
-      <div className="container-width z-10 relative">
-        <div className="text-center mb-24">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-xs font-mono text-textDim uppercase tracking-widest mb-6">
+    <section id="features" ref={sectionRef} className="py-32 md:py-40 relative">
+      {/* Background glow */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full bg-primary/[0.02] blur-[120px]" />
+      </div>
+
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-16 relative z-10">
+        <div className="text-center mb-20">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 glass px-4 py-1.5 text-xs font-mono text-textDim uppercase tracking-widest mb-6">
             <CircuitBoard size={12} className="text-primary" />
             The Technology
           </div>
-          <h2 className="text-4xl md:text-5xl font-display font-bold text-white tracking-tight mb-4">
+          <h2 className="text-4xl md:text-5xl font-display font-bold text-white tracking-tight mb-5">
             Built for the <span className="gradient-text">Edge</span>
           </h2>
-          <p className="text-textSecondary max-w-xl mx-auto">
+          <p className="text-textSecondary max-w-xl mx-auto leading-relaxed">
             Six pillars of industrial intelligence. Each one battle-tested, each one designed to save lives and prevent millions in downtime.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           {features.map((feature, i) => (
-            <div key={i} className={`feature-card group glass rounded-3xl p-10 transition-all duration-500 hover:-translate-y-2 border border-white/5 hover:border-white/10 ${feature.glow}`}>
-              <div className={`w-14 h-14 rounded-2xl glass flex items-center justify-center mb-8 ${feature.color}`}>
-                <feature.icon size={26} />
+            <div key={i} className="feature-card group glass rounded-2xl p-8 lg:p-10 transition-all duration-400 hover:-translate-y-1.5 hover:border-white/10">
+              <div className={`w-12 h-12 rounded-xl glass flex items-center justify-center mb-6 ${feature.color}`}>
+                <feature.icon size={24} />
               </div>
-              <h3 className="text-xl font-display font-extrabold text-white mb-4 tracking-tight">{feature.title}</h3>
-              <p className="text-textSecondary leading-relaxed">{feature.description}</p>
+              <h3 className="text-lg font-display font-bold text-white mb-3 tracking-tight">{feature.title}</h3>
+              <p className="text-sm text-textSecondary leading-relaxed">{feature.description}</p>
             </div>
           ))}
         </div>
@@ -184,43 +211,43 @@ const FeaturesSection = () => {
 //  DATA FLOW SECTION
 // ═══════════════════════════════════════════════════
 
+const pipelineSteps = [
+  { icon: ThermometerSun, label: 'ESP32 Wearable', sub: 'Sensors + Encrypt', color: 'text-cyan-400', border: 'border-cyan-500/20' },
+  { icon: Lock, label: 'AES-256-GCM', sub: 'Encrypted Transit', color: 'text-emerald-400', border: 'border-emerald-500/20' },
+  { icon: BarChart3, label: 'Firebase RTDB', sub: 'Ciphertext Only', color: 'text-amber-400', border: 'border-amber-500/20' },
+  { icon: Cpu, label: 'ESP32-S3 Edge', sub: 'Decrypt + Compute', color: 'text-indigo-400', border: 'border-indigo-500/20' },
+  { icon: Eye, label: 'Dashboard', sub: 'Decrypt + Display', color: 'text-primary', border: 'border-primary/20' },
+];
+
 const DataFlowSection = () => (
-  <section className="section-padding relative overflow-hidden bg-surfaceLight/30 border-y border-white/[0.02]">
-    <div className="absolute inset-0 pointer-events-none">
+  <section className="py-32 md:py-40 relative overflow-hidden">
+    {/* Background */}
+    <div className="absolute inset-0 pointer-events-none bg-surfaceLight/20">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] rounded-full bg-primary/[0.02] blur-[120px]" />
     </div>
 
-    <div className="container-width relative z-10">
+    <div className="max-w-[1400px] mx-auto px-6 lg:px-16 relative z-10">
       <div className="text-center mb-20">
         <h2 className="text-3xl md:text-4xl font-display font-bold text-white tracking-tight mb-4">
           The Encrypted <span className="gradient-text">Data Pipeline</span>
         </h2>
-        <p className="text-textSecondary max-w-lg mx-auto">
+        <p className="text-textSecondary max-w-lg mx-auto leading-relaxed">
           From sensor to dashboard, your data is encrypted at every hop. Firebase never sees plaintext.
         </p>
       </div>
 
-      <div className="relative flex flex-col md:flex-row items-center justify-between gap-6 md:gap-4 max-w-5xl mx-auto">
-        {/* Connection Line (Desktop only) */}
-        <div className="hidden md:block absolute top-[42px] left-[6%] right-[6%] h-[2px] bg-white/[0.05] z-0">
-          <div className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-primary/50 to-transparent -translate-x-full animate-[shimmer_3s_infinite]" />
-        </div>
-
-        {[
-          { icon: ThermometerSun, label: 'ESP32 Wearable', sub: 'Sensors + Encrypt', color: 'text-cyan-400', border: 'border-cyan-500/20' },
-          { icon: Lock, label: 'AES-256-GCM', sub: 'Encrypted Transit', color: 'text-emerald-400', border: 'border-emerald-500/20' },
-          { icon: BarChart3, label: 'Firebase RTDB', sub: 'Ciphertext Only', color: 'text-amber-400', border: 'border-amber-500/20' },
-          { icon: Lock, label: 'AES-256-GCM', sub: 'Encrypted Transit', color: 'text-emerald-400', border: 'border-emerald-500/20' },
-          { icon: Cpu, label: 'ESP32-S3 Edge', sub: 'Decrypt + Compute', color: 'text-indigo-400', border: 'border-indigo-500/20' },
-          { icon: Eye, label: 'Dashboard', sub: 'Decrypt + Display', color: 'text-primary', border: 'border-primary/20' },
-        ].map((step, i) => (
-          <div key={i} className="relative z-10 w-full md:w-auto flex flex-col items-center">
-            <div className={`glass rounded-2xl p-6 text-center w-full md:w-[150px] border ${step.border} transition-transform hover:-translate-y-2`}>
-              <step.icon size={28} className={`${step.color} mx-auto mb-4 drop-shadow-[0_0_8px_currentColor]`} />
+      {/* Pipeline — Desktop: horizontal row, Mobile: vertical stack */}
+      <div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-0">
+        {pipelineSteps.map((step, i) => (
+          <div key={i} className="flex flex-col md:flex-row items-center">
+            <div className={`glass rounded-2xl p-6 text-center w-full max-w-[200px] md:w-[160px] border ${step.border} transition-all duration-300 hover:-translate-y-1`}>
+              <step.icon size={28} className={`${step.color} mx-auto mb-3`} />
               <p className="text-sm font-bold text-white tracking-tight">{step.label}</p>
-              <p className="text-[10px] text-textDim font-mono mt-2 uppercase tracking-wide">{step.sub}</p>
+              <p className="text-[10px] text-textDim font-mono mt-1.5 uppercase tracking-wide">{step.sub}</p>
             </div>
-            {i < 5 && <ChevronRight size={20} className="text-white/20 mt-4 md:hidden" />}
+            {i < pipelineSteps.length - 1 && (
+              <ChevronRight size={20} className="text-white/20 my-2 md:my-0 md:mx-2 rotate-90 md:rotate-0 shrink-0" />
+            )}
           </div>
         ))}
       </div>
@@ -248,8 +275,8 @@ const plans = [
       'Community support',
     ],
     cta: 'Start Basic',
-    borderColor: 'border-white/10',
-    ctaClass: 'bg-white/10 hover:bg-white/15 text-white',
+    borderColor: 'border-white/[0.06]',
+    ctaClass: 'bg-white/[0.08] hover:bg-white/[0.12] text-white',
   },
   {
     name: 'Aura Professional',
@@ -268,7 +295,7 @@ const plans = [
       'Priority email support',
     ],
     cta: 'Start Professional',
-    borderColor: 'border-primary/40',
+    borderColor: 'border-primary/30',
     ctaClass: 'bg-primary hover:bg-primaryDark text-white glow-primary',
   },
   {
@@ -288,41 +315,41 @@ const plans = [
       '24/7 dedicated support',
     ],
     cta: 'Contact Sales',
-    borderColor: 'border-accent/30',
-    ctaClass: 'bg-accent/20 hover:bg-accent/30 text-accent border border-accent/30',
+    borderColor: 'border-accent/20',
+    ctaClass: 'bg-accent/[0.15] hover:bg-accent/[0.25] text-accent border border-accent/30',
   },
 ];
 
 const PricingSection = () => (
-  <section id="pricing" className="section-padding relative">
+  <section id="pricing" className="py-32 md:py-40 relative">
     <div className="absolute inset-0 pointer-events-none">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] rounded-full bg-primary/[0.03] blur-[150px]" />
     </div>
 
-    <div className="container-width relative z-10">
-      <div className="text-center mb-24">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-xs font-mono text-textDim uppercase tracking-widest mb-6">
+    <div className="max-w-[1200px] mx-auto px-6 lg:px-16 relative z-10">
+      <div className="text-center mb-20">
+        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 glass px-4 py-1.5 text-xs font-mono text-textDim uppercase tracking-widest mb-6">
           <Zap size={12} className="text-warning" />
           Pricing
         </div>
-        <h2 className="text-4xl md:text-5xl font-display font-bold text-white tracking-tight mb-4">
+        <h2 className="text-4xl md:text-5xl font-display font-bold text-white tracking-tight mb-5">
           Scale Safety. <span className="gradient-text">Not Cost.</span>
         </h2>
-        <p className="text-textSecondary max-w-xl mx-auto">
+        <p className="text-textSecondary max-w-xl mx-auto leading-relaxed">
           Every plan includes the full Harmony Aura dashboard. Choose the depth of intelligence your site needs.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
         {plans.map((plan, i) => (
-          <div key={i} className={`relative glass rounded-3xl p-10 border ${plan.borderColor} transition-all duration-500 hover:-translate-y-3 ${plan.popular ? 'glow-primary shadow-2xl shadow-primary/10' : ''}`}>
+          <div key={i} className={`relative glass rounded-2xl p-8 lg:p-10 border ${plan.borderColor} transition-all duration-500 hover:-translate-y-2 ${plan.popular ? 'glow-primary' : ''}`}>
             {plan.popular && (
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-5 py-2 rounded-full bg-primary text-white text-[11px] font-extrabold uppercase tracking-widest shadow-lg shadow-primary/20 border border-white/20">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary text-white text-[11px] font-bold uppercase tracking-wider whitespace-nowrap shadow-lg shadow-primary/20">
                 <Star size={10} /> Most Popular
               </div>
             )}
 
-            <div className="mb-8">
+            <div className="mb-6">
               <h3 className="text-xl font-display font-bold text-white mb-1">{plan.name}</h3>
               <p className="text-xs font-mono text-textDim uppercase tracking-wider">{plan.tagline}</p>
             </div>
@@ -341,7 +368,7 @@ const PricingSection = () => (
               ))}
             </ul>
 
-            <button className={`w-full py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all duration-300 ${plan.ctaClass}`}>
+            <button className={`w-full py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all duration-300 cursor-pointer ${plan.ctaClass}`}>
               {plan.cta}
             </button>
           </div>
@@ -356,10 +383,10 @@ const PricingSection = () => (
 // ═══════════════════════════════════════════════════
 
 const Footer = () => (
-  <footer className="border-t border-white/[0.05] py-20 bg-surface/50">
-    <div className="container-width">
+  <footer className="border-t border-white/[0.05] py-16 lg:py-20">
+    <div className="max-w-[1400px] mx-auto px-6 lg:px-16">
       <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-        <div>
+        <div className="text-center md:text-left">
           <h3 className="font-display font-extrabold text-2xl text-white tracking-tight">
             Harmony<span className="text-primary">Aura</span>
           </h3>
@@ -384,37 +411,12 @@ const Footer = () => (
 );
 
 // ═══════════════════════════════════════════════════
-//  NAVBAR
-// ═══════════════════════════════════════════════════
-
-const Navbar = () => (
-  <nav className="fixed top-0 left-0 right-0 z-50 glass-nav border-b border-white/[0.05]">
-    <div className="container-width flex items-center justify-between h-20">
-      <div className="flex items-center gap-2">
-        <Shield size={20} className="text-primary" />
-        <span className="font-display font-extrabold text-lg text-white tracking-tight">
-          Harmony<span className="text-primary">Aura</span>
-        </span>
-      </div>
-      <div className="hidden md:flex items-center gap-8 text-sm text-textSecondary">
-        <a href="#features" className="hover:text-white transition-colors">Features</a>
-        <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
-        <a href="#" className="hover:text-white transition-colors">Docs</a>
-      </div>
-      <a href="#pricing" className="px-5 py-2 rounded-lg bg-primary hover:bg-primaryDark text-white text-sm font-bold transition-all duration-300">
-        Get Started
-      </a>
-    </div>
-  </nav>
-);
-
-// ═══════════════════════════════════════════════════
 //  MAIN APP
 // ═══════════════════════════════════════════════════
 
 function App() {
   return (
-    <div className="min-h-screen bg-background text-textMain font-sans selection:bg-primary/30">
+    <div className="min-h-screen bg-background text-textMain font-sans">
       <Navbar />
       <HeroSection />
       <FeaturesSection />

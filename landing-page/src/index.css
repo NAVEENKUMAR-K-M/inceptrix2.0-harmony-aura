@@ -63,34 +63,28 @@ body {
   border-radius: 3px;
 }
 
-/* Layout Utilities */
-.section-padding {
-  @apply py-32 md:py-48;
-}
+/* ═════════════════════════════════════════
+   Glassmorphism Utilities (plain CSS)
+   ═════════════════════════════════════════ */
 
-.container-width {
-  @apply max-w-[1400px] mx-auto px-6 lg:px-12 w-full;
-}
-
-/* Glassmorphism utility */
 .glass {
-  background: rgba(12, 16, 24, 0.4);
+  background: rgba(12, 16, 24, 0.5);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
 }
 
 .glass-nav {
-  background: rgba(6, 8, 15, 0.7);
+  background: rgba(6, 8, 15, 0.8);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* Gradient text utility */
 .gradient-text {
-  background: linear-gradient(135deg, #10b981, #38bdf8 60%, #818cf8);
+  background: linear-gradient(135deg, #10b981, #38bdf8 70%, #818cf8);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
