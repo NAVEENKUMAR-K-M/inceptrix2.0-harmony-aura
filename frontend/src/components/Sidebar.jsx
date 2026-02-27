@@ -29,7 +29,7 @@ const Sidebar = ({ activeTab = 'overview', onTabChange }) => {
             </div>
 
             {/* Navigation */}
-            <div className="flex-1 space-y-2">
+            <div className="flex-1 space-y-2 overflow-y-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 <div className="text-xs font-mono text-textDim uppercase tracking-widest mb-4 px-4">Main Menu</div>
                 <NavItem
                     icon={LayoutDashboard}
