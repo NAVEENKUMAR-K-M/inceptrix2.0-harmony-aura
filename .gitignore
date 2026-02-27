@@ -52,12 +52,24 @@ mobile/.flutter-plugins-dependencies
 mobile/build/
 mobile/.packages
 mobile/pubspec.lock
+
+mobile_operator/.dart_tool/
+mobile_operator/.flutter-plugins
+mobile_operator/.flutter-plugins-dependencies
+mobile_operator/build/
+mobile_operator/.packages
+mobile_operator/pubspec.lock
+
 *.iml
 
 # Secrets & Config (CRITICAL)
 backend/serviceAccountKey.json
 frontend/.env
 *.json.local
+mobile/android/app/google-services.json
+mobile_operator/android/app/google-services.json
+mobile/ios/Runner/GoogleService-Info.plist
+mobile_operator/ios/Runner/GoogleService-Info.plist
 
 # Logs
 *.log
