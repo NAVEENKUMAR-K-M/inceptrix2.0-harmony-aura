@@ -191,6 +191,10 @@ const IoTOperations = () => {
     const estFatigue = edgeIntelligence?.fatigue_estimated ?? 0;
     const estStress = edgeIntelligence?.stress_estimated ?? 0;
 
+    // Synthetic Fusion Parameters
+    const spo2 = edgeIntelligence?.input_spo2 ?? '--';
+    const noise = edgeIntelligence?.input_noise ?? '--';
+
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
@@ -293,6 +297,17 @@ const IoTOperations = () => {
                         <StatPill icon={Activity} label="Vibration" value={vibrationG} unit="g" color="text-white" />
                         <StatPill icon={Gauge} label="Tilt Angle" value={tiltAngle} unit="°"
                             color={tiltAngle !== '--' && Math.abs(tiltAngle) > 45 ? 'text-amber-400' : 'text-white'} />
+
+                        {/* Synthetic AI Fusion Data */}
+                        <div className="mt-2 pt-2 border-t border-white/[0.04]">
+                            <div className="flex items-center gap-2 mb-1 px-1">
+                                <span className="text-[9px] font-mono text-indigo-400 uppercase tracking-widest">Synthetic Twin Data</span>
+                            </div>
+                            <StatPill icon={Activity} label="SpO2 (Blood Ox)" value={spo2} unit="%"
+                                color={spo2 !== '--' && spo2 < 95 ? 'text-red-400' : 'text-indigo-400'} />
+                            <StatPill icon={Radio} label="Ambient Noise" value={noise} unit="dB"
+                                color={noise !== '--' && noise > 85 ? 'text-amber-400' : 'text-indigo-400'} />
+                        </div>
                     </div>
 
                     {/* Accelerometer Mini-Display */}

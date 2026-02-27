@@ -39,12 +39,19 @@
 // └──────────────────────────────────────────────────┘
 #include "../shared/harmony_crypto_config.h"
 
+// ┌──────────────────────────────────────────────────┐
+// │  INTELLIGENCE ENGINE — Math & Physics           │
+// └──────────────────────────────────────────────────┘
+#include "SentinelEngine.h"
+
+SentinelEngine engine;
+
 // ═══════════════════════════════════════════════════
 //  USER CONFIGURATION
 // ═══════════════════════════════════════════════════
 
-#define WIFI_SSID       "YOUR_WIFI_SSID"
-#define WIFI_PASSWORD   "YOUR_WIFI_PASSWORD"
+#define WIFI_SSID       "Naveen"
+#define WIFI_PASSWORD   "Pikachu!"
 
 #define FIREBASE_HOST   "harmony-aura-default-rtdb.firebaseio.com"
 #define API_KEY         "AIzaSyC3wBL1tKjUm1b8aJ9nSBc26E3lH_F0sYI"
@@ -63,6 +70,7 @@
 
 FirebaseData fbdoStream1;   // Stream: wearable vitals (encrypted)
 FirebaseData fbdoStream2;   // Stream: machine telemetry
+FirebaseData fbdoStream3;   // Stream: synthetic vitals/environment
 FirebaseData fbdoWrite;     // For writing encrypted results
 
 FirebaseAuth auth;
@@ -91,13 +99,13 @@ volatile float machine_degradation = 0.0;
 volatile float machine_rpm         = 0.0;
 volatile bool  machine_online      = false;
 
-// Edge-computed results
-float edgeCIS           = 0.0;
-String edgeCISLevel     = "Safe";
-float edgePdmHealth     = 100.0;
-String edgePdmStatus    = "Healthy";
-float edgeFatigue       = 0.0;
-float edgeStress        = 0.0;
+// Synthetic Data (from Injector)
+volatile float synthetic_spo2      = 98.0;
+volatile float synthetic_noise     = 65.0;
+volatile float synthetic_wind      = 12.0;
+volatile bool  synthetic_online    = false;
+
+// Edge-computed results are now handled inside engine.
 
 // ═══════════════════════════════════════════════════
 //  TIMING
@@ -115,17 +123,17 @@ const unsigned long PUSH_INTERVAL    = 1500;
 // Called when wearable vitals change — now ENCRYPTED
 void wearableStreamCallback(FirebaseStream data) {
   if (data.dataTypeEnum() == firebase_rtdb_data_type_json) {
-    FirebaseJson &json = data.jsonData();
+    FirebaseJson *json = data.jsonObjectPtr();
     FirebaseJsonData jsonData;
 
     // ── Extract encrypted envelope ──
     String ivB64 = "", ctB64 = "", atB64 = "";
     int version = 0;
 
-    if (json.get(jsonData, "s/v"))  version = jsonData.to<int>();
-    if (json.get(jsonData, "s/iv")) ivB64 = jsonData.to<String>();
-    if (json.get(jsonData, "s/ct")) ctB64 = jsonData.to<String>();
-    if (json.get(jsonData, "s/at")) atB64 = jsonData.to<String>();
+    if (json->get(jsonData, "s/v"))  version = jsonData.to<int>();
+    if (json->get(jsonData, "s/iv")) ivB64 = jsonData.to<String>();
+    if (json->get(jsonData, "s/ct")) ctB64 = jsonData.to<String>();
+    if (json->get(jsonData, "s/at")) atB64 = jsonData.to<String>();
 
     if (version != HARMONY_CRYPTO_VERSION || ivB64.isEmpty()) {
       Serial.println("[EDGE] Received non-encrypted or unknown-version data, skipping");
@@ -175,17 +183,31 @@ void wearableStreamCallback(FirebaseStream data) {
 // Called when machine telemetry changes (unencrypted — from simulation)
 void machineStreamCallback(FirebaseStream data) {
   if (data.dataTypeEnum() == firebase_rtdb_data_type_json) {
-    FirebaseJson &json = data.jsonData();
+    FirebaseJson *json = data.jsonObjectPtr();
     FirebaseJsonData jsonData;
 
-    if (json.get(jsonData, "engine_load"))    machine_engineLoad = jsonData.to<float>();
-    if (json.get(jsonData, "coolant_temp"))   machine_coolantTemp = jsonData.to<float>();
-    if (json.get(jsonData, "stress_index"))   machine_stressIndex = jsonData.to<float>();
-    if (json.get(jsonData, "vibration_mm_s")) machine_vibration = jsonData.to<float>();
-    if (json.get(jsonData, "degradation"))    machine_degradation = jsonData.to<float>();
-    if (json.get(jsonData, "engine_rpm"))     machine_rpm = jsonData.to<float>();
+    if (json->get(jsonData, "engine_load"))    machine_engineLoad = jsonData.to<float>();
+    if (json->get(jsonData, "coolant_temp"))   machine_coolantTemp = jsonData.to<float>();
+    if (json->get(jsonData, "stress_index"))   machine_stressIndex = jsonData.to<float>();
+    if (json->get(jsonData, "vibration_mm_s")) machine_vibration = jsonData.to<float>();
+    if (json->get(jsonData, "degradation"))    machine_degradation = jsonData.to<float>();
+    if (json->get(jsonData, "engine_rpm"))     machine_rpm = jsonData.to<float>();
 
     machine_online = true;
+  }
+}
+
+// Called when synthetic environment/vitals change
+void syntheticStreamCallback(FirebaseStream data) {
+  if (data.dataTypeEnum() == firebase_rtdb_data_type_json) {
+    FirebaseJson *json = data.jsonObjectPtr();
+    FirebaseJsonData jsonData;
+
+    if (json->get(jsonData, "spo2_pct"))         synthetic_spo2 = jsonData.to<float>();
+    if (json->get(jsonData, "ambient_noise_db")) synthetic_noise = jsonData.to<float>();
+    if (json->get(jsonData, "wind_speed_kmh"))   synthetic_wind = jsonData.to<float>();
+
+    synthetic_online = true;
   }
 }
 
@@ -198,23 +220,10 @@ void streamTimeoutCallback(bool timeout) {
 // ═══════════════════════════════════════════════════
 
 void computeEdgeCIS() {
-  float baseline_hr = 72.0;
-  float max_hr = 180.0;
-  float hr_elevation = max(0.0f, wearable_hr - baseline_hr);
-
-  float humidity_factor = 1.0 + max(0.0f, (wearable_humidity - 50.0f) / 90.0f);
-  edgeFatigue = min(100.0f, (hr_elevation / (max_hr - baseline_hr)) * 100.0f * humidity_factor);
-  edgeStress = min(100.0f, (hr_elevation / (max_hr - baseline_hr)) * 100.0f);
-
-  float raw_cis = (0.4f * (edgeFatigue / 100.0f))
-                + (0.3f * (edgeStress / 100.0f))
-                + (0.3f * (machine_stressIndex / 100.0f));
-
-  edgeCIS = max(0.0f, min(1.0f, raw_cis));
-
-  if (edgeCIS >= 0.75) edgeCISLevel = "Critical";
-  else if (edgeCIS >= 0.40) edgeCISLevel = "Warning";
-  else edgeCISLevel = "Safe";
+  engine.computeCIS(
+    wearable_hr, wearable_temp, wearable_humidity, wearable_gasLevel,
+    machine_stressIndex, synthetic_spo2, synthetic_noise
+  );
 }
 
 // ═══════════════════════════════════════════════════
@@ -222,20 +231,10 @@ void computeEdgeCIS() {
 // ═══════════════════════════════════════════════════
 
 void computeEdgePdM() {
-  float health = 100.0;
-
-  if (machine_engineLoad > 80.0) health -= (machine_engineLoad - 80.0) * 1.5;
-  if (machine_coolantTemp > 85.0) health -= (machine_coolantTemp - 85.0) * 2.0;
-  if (machine_vibration > 6.0) health -= (machine_vibration - 6.0) * 3.0;
-  health -= machine_degradation * 500.0;
-  if (machine_stressIndex > 60.0) health -= (machine_stressIndex - 60.0) * 0.5;
-
-  edgePdmHealth = max(0.0f, min(100.0f, health));
-
-  if (edgePdmHealth >= 80.0) edgePdmStatus = "Healthy";
-  else if (edgePdmHealth >= 50.0) edgePdmStatus = "Degraded";
-  else if (edgePdmHealth >= 20.0) edgePdmStatus = "At Risk";
-  else edgePdmStatus = "Critical";
+  engine.computePdM(
+    machine_engineLoad, machine_coolantTemp, machine_vibration,
+    machine_degradation, machine_stressIndex
+  );
 }
 
 // ═══════════════════════════════════════════════════
@@ -243,10 +242,10 @@ void computeEdgePdM() {
 // ═══════════════════════════════════════════════════
 
 void updateAlarms() {
-  if (edgeCISLevel == "Critical" || edgePdmStatus == "Critical") {
+  if (engine.edgeCISLevel == "Critical" || engine.edgePdmStatus == "Critical") {
     digitalWrite(LED_PIN, HIGH);
     if (BUZZER_PIN > 0) tone(BUZZER_PIN, 2000, 200);
-  } else if (edgeCISLevel == "Warning" || edgePdmStatus == "At Risk") {
+  } else if (engine.edgeCISLevel == "Warning" || engine.edgePdmStatus == "At Risk") {
     digitalWrite(LED_PIN, (millis() / 500) % 2 == 0 ? HIGH : LOW);
   } else {
     digitalWrite(LED_PIN, LOW);
@@ -267,19 +266,21 @@ void pushEdgeResults() {
   StaticJsonDocument<512> doc;
 
   // CIS Results
-  doc["cis_score"] = roundf(edgeCIS * 100) / 100;
-  doc["cis_risk_level"] = edgeCISLevel;
-  doc["fatigue_estimated"] = roundf(edgeFatigue * 10) / 10;
-  doc["stress_estimated"] = roundf(edgeStress * 10) / 10;
+  doc["cis_score"] = roundf(engine.edgeCIS * 100) / 100;
+  doc["cis_risk_level"] = engine.edgeCISLevel;
+  doc["fatigue_estimated"] = roundf(engine.edgeFatigue * 10) / 10;
+  doc["stress_estimated"] = roundf(engine.edgeStress * 10) / 10;
 
   // PdM Results
-  doc["pdm_health_score"] = roundf(edgePdmHealth * 10) / 10;
-  doc["pdm_status"] = edgePdmStatus;
+  doc["pdm_health_score"] = roundf(engine.edgePdmHealth * 10) / 10;
+  doc["pdm_status"] = engine.edgePdmStatus;
 
   // Input summary
   doc["input_hr"] = wearable_hr;
   doc["input_machine_stress"] = machine_stressIndex;
   doc["input_machine_load"] = machine_engineLoad;
+  doc["input_spo2"] = synthetic_spo2;
+  doc["input_noise"] = synthetic_noise;
 
   // Metadata
   doc["computed_on"] = "ESP32-S3-EDGE-01";
@@ -308,7 +309,7 @@ void pushEdgeResults() {
 
     if (Firebase.RTDB.setJSON(&fbdoWrite, "/site/iot/edge_intelligence", &secureJson)) {
       Serial.printf("[EDGE-E2EE] CIS:%.2f (%s) | PdM:%.1f%% (%s) | Encrypted ✓\n",
-                    edgeCIS, edgeCISLevel.c_str(), edgePdmHealth, edgePdmStatus.c_str());
+                    engine.edgeCIS, engine.edgeCISLevel.c_str(), engine.edgePdmHealth, engine.edgePdmStatus.c_str());
     } else {
       Serial.printf("[ERR] Edge push failed: %s\n", fbdoWrite.errorReason().c_str());
     }
@@ -370,6 +371,11 @@ void setup() {
     Serial.printf("[ERR] Machine stream failed: %s\n", fbdoStream2.errorReason().c_str());
   }
   Firebase.RTDB.setStreamCallback(&fbdoStream2, machineStreamCallback, streamTimeoutCallback);
+
+  if (!Firebase.RTDB.beginStream(&fbdoStream3, "/site/iot/synthetic/device_01")) {
+    Serial.printf("[ERR] Synthetic stream failed: %s\n", fbdoStream3.errorReason().c_str());
+  }
+  Firebase.RTDB.setStreamCallback(&fbdoStream3, syntheticStreamCallback, streamTimeoutCallback);
 
   Serial.println("[FIREBASE] Streams initialized.");
   Serial.println("[CRYPTO] AES-256-GCM decryption + re-encryption ACTIVE.");

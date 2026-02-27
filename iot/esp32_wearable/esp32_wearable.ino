@@ -5,11 +5,12 @@
 
   Hardware:
     - ESP32 Dev Module
+    - OLED Display  → SPI (SCK:18, MOSI:23, RES:17, DC:16, CS:5)
     - DHT22         → GPIO 4   (Temperature & Humidity)
-    - Pulse Sensor  → GPIO 36  (Analog — Heart Rate BPM)
+    - Pulse Sensor  → GPIO 34  (Analog — Heart Rate BPM)
     - MPU6050       → I2C SDA/SCL (GPIO 21/22) (Gyroscope/Accelerometer)
-    - MQ Gas Sensor → GPIO 34  (Analog — Air Quality)
-    - SW-420 Vibration → GPIO 35 (Analog — Physical Impact)
+    - MQ Gas Sensor → GPIO 35  (Analog — Air Quality)
+    - SW-420 Vibration → GPIO 27 (Analog/Digital Impact)
 
   Security:
     - AES-256-GCM authenticated encryption
@@ -25,6 +26,8 @@
     - Adafruit Unified Sensor
     - MPU6050_light (by rfetick)
     - ArduinoJson
+    - Adafruit GFX Library (for OLED)
+    - Adafruit SSD1306 (for OLED)
     - Wire (built-in)
     - mbedtls (built into ESP32 SDK — no install needed)
 */
@@ -38,8 +41,11 @@
 
 #include <DHT.h>
 #include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 #include <MPU6050_light.h>
 #include <ArduinoJson.h>
+#include <SPI.h>
 
 // ┌──────────────────────────────────────────────────┐
 // │  E2EE SECURITY — AES-256-GCM Encryption Layer   │
@@ -51,8 +57,8 @@
 // ═══════════════════════════════════════════════════
 
 // WiFi Credentials
-#define WIFI_SSID       "YOUR_WIFI_SSID"
-#define WIFI_PASSWORD   "YOUR_WIFI_PASSWORD"
+#define WIFI_SSID       "Naveen"
+#define WIFI_PASSWORD   "Pikachu!"
 
 // Firebase Credentials (from Firebase Console)
 #define FIREBASE_HOST   "harmony-aura-default-rtdb.firebaseio.com"
@@ -67,9 +73,34 @@
 
 #define DHT_PIN         4       // DHT22 data pin
 #define DHT_TYPE        DHT22
-#define PULSE_PIN       36      // Analog input (VP)
-#define GAS_PIN         34      // Analog input
-#define VIBRATION_PIN   35      // Analog input
+#define PULSE_PIN       34      // Analog input (Changed from 36)
+#define GAS_PIN         35      // Analog input (Changed from 34)
+#define VIBRATION_PIN   27      // Digital/Analog input (Changed from 35)
+
+// OLED SPI Connections
+#define OLED_MOSI       23
+#define OLED_CLK        18
+#define OLED_DC         16
+#define OLED_CS         5
+#define OLED_RESET      17
+#define SCREEN_WIDTH    128
+#define SCREEN_HEIGHT   64
+
+// ═══════════════════════════════════════════════════
+//  UI BITMAPS & ASSETS (16x16)
+// ═══════════════════════════════════════════════════
+const unsigned char bmp_lock[] PROGMEM = {
+  0x01, 0x80, 0x03, 0xc0, 0x06, 0x60, 0x0c, 0x30, 0x0c, 0x30, 0x1f, 0xf8, 0x3f, 0xfc, 0x3f, 0xfc, 
+  0x3f, 0xfc, 0x3e, 0x7c, 0x3e, 0x7c, 0x3f, 0xfc, 0x3f, 0xfc, 0x3f, 0xfc, 0x1f, 0xf8, 0x00, 0x00
+};
+const unsigned char bmp_heart_large[] PROGMEM = {
+  0x00, 0x00, 0x30, 0x0c, 0x78, 0x1e, 0xfc, 0x3f, 0xfe, 0x7f, 0xfe, 0x7f, 0xfe, 0x7f, 0xfe, 0x7f, 
+  0xfc, 0x3f, 0xf8, 0x1f, 0xf0, 0x0f, 0xe0, 0x07, 0xc0, 0x03, 0x80, 0x01, 0x00, 0x00, 0x00, 0x00
+};
+const unsigned char bmp_heart_small[] PROGMEM = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x08, 0x38, 0x1c, 0x3c, 0x3c, 0x3e, 0x7c, 0x3e, 0x7c, 
+  0x3c, 0x3c, 0x38, 0x1c, 0x10, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
 
 // ═══════════════════════════════════════════════════
 //  SENSOR OBJECTS
@@ -77,6 +108,7 @@
 
 DHT dht(DHT_PIN, DHT_TYPE);
 MPU6050 mpu(Wire);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &SPI, OLED_DC, OLED_RESET, OLED_CS);
 
 // Firebase objects
 FirebaseData fbdo;
@@ -92,6 +124,8 @@ const unsigned long SEND_INTERVAL = 1000; // 1 second
 
 unsigned long lastHeartbeat = 0;
 const unsigned long HEARTBEAT_INTERVAL = 5000; // 5 seconds
+unsigned long lastDisplayUpdate = 0;
+const unsigned long DISPLAY_INTERVAL = 200; // 5 FPS display update
 
 // BPM calculation variables
 int pulseReadings[10];
@@ -100,6 +134,11 @@ unsigned long lastBeatTime = 0;
 int currentBPM = 72;
 bool beatDetected = false;
 int beatThreshold = 2048;
+
+// Sparkline Visualizer State
+uint8_t sparklineBPM[64];
+uint8_t sparklineIndex = 0;
+unsigned long lastSparklineUpdate = 0;
 
 // Packet counter for replay protection
 uint32_t packetCounter = 0;
@@ -127,6 +166,24 @@ void setup() {
     mpu.calcOffsets();
     Serial.println("     Calibration complete.");
   }
+
+  // ── Initialize OLED ──
+  if(!display.begin(SSD1306_SWITCHCAPVCC)) {
+    Serial.println(F("[ERR] SSD1306 allocation failed"));
+  } else {
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 10);
+    display.println("  HARMONY AURA OS");
+    display.println("  -----------------");
+    display.println("  BOOTING SYSTEM...");
+    display.display();
+    delay(1000);
+  }
+
+  // Initialize sparkline buffer
+  for(int i = 0; i < 64; i++) sparklineBPM[i] = 10;
 
   analogReadResolution(12);
 
@@ -282,5 +339,85 @@ void loop() {
     }
   }
 
+  // ── Update Local OLED Display ──
+  if (now - lastDisplayUpdate >= DISPLAY_INTERVAL) {
+    lastDisplayUpdate = now;
+    updateOLED();
+  }
+
+  // ── Update Sparkline ──
+  if (now - lastSparklineUpdate >= 250) { // 4Hz trace update
+    lastSparklineUpdate = now;
+    int traceVal = map(currentBPM, 40, 180, 1, 28);
+    traceVal = constrain(traceVal, 1, 28);
+    sparklineBPM[sparklineIndex] = traceVal;
+    sparklineIndex = (sparklineIndex + 1) % 64;
+  }
+
   delay(10);
+}
+
+void updateOLED() {
+  display.clearDisplay();
+  
+  // Header: Secure Ticker
+  display.fillRect(0, 0, 128, 12, SSD1306_WHITE); // Inverted top bar
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_BLACK);
+  display.setCursor(2, 2);
+  display.print("AURA [SECURED]");
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    display.setCursor(102, 2);
+    display.print("WIFI");
+  }
+
+  display.setTextColor(SSD1306_WHITE);
+  
+  // Left Pane: HR & Sparkline
+  display.drawFastVLine(66, 12, 52, SSD1306_WHITE); // Splitter
+  
+  // Heart Rate Icon & Value
+  if (beatDetected) {
+    display.drawBitmap(2, 16, bmp_heart_large, 16, 16, SSD1306_WHITE);
+  } else {
+    display.drawBitmap(2, 16, bmp_heart_small, 16, 16, SSD1306_WHITE);
+  }
+  display.setTextSize(2);
+  display.setCursor(24, 16);
+  if (currentBPM < 100) display.print(" ");
+  display.print(currentBPM);
+  
+  // Sparkline Graph
+  int startX = 1;
+  int startY = 62;
+  for(int i = 0; i < 63; i++) {
+    int idx = (sparklineIndex + i) % 64;
+    int nextIdx = (sparklineIndex + i + 1) % 64;
+    display.drawLine(startX + i, startY - sparklineBPM[idx], startX + i + 1, startY - sparklineBPM[nextIdx], SSD1306_WHITE);
+  }
+  
+  // Right Pane: Vitals Box
+  display.setTextSize(1);
+  display.setCursor(72, 16);
+  display.print("T:");
+  display.print((int)dht.readTemperature());
+  display.print("C");
+  
+  display.setCursor(72, 28);
+  display.print("G:");
+  int gasRaw = analogRead(GAS_PIN);
+  display.print(map(gasRaw, 0, 4095, 0, 100));
+  display.print("%");
+
+  display.setCursor(72, 40);
+  display.print("V:");
+  int vibRaw = analogRead(VIBRATION_PIN);
+  display.print(map(vibRaw, 0, 4095, 0, 100));
+  display.print("%");
+
+  // Bottom Lock E2EE Icon
+  display.drawBitmap(108, 48, bmp_lock, 16, 16, SSD1306_WHITE);
+  
+  display.display();
 }
