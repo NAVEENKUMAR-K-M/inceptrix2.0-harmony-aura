@@ -1,116 +1,190 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import SplitType from 'split-type';
 import { Check, X, Zap, Star, Crown, ArrowRight } from 'lucide-react';
+import { MagneticButton } from './ui/Button';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const plans = [
     {
-        name: 'Aura Basic', subtitle: 'Digital Visibility', price: 99, icon: Zap,
-        iconColor: '#06b6d4', popular: false,
-        desc: 'Perfect for small sites beginning their digital safety transformation.',
-        features: [
-            { t: 'Real-time Dashboard Access', ok: true },
-            { t: 'Standard CIS Scoring', ok: true },
-            { t: '30-Day Data Retention', ok: true },
-            { t: 'Email Threshold Alerts', ok: true },
-            { t: 'Up to 25 Workers', ok: true },
-            { t: 'IoT Hardware Support', ok: false },
-            { t: 'Edge Intelligence (S3)', ok: false },
-            { t: 'E2EE Encryption', ok: false },
-            { t: 'Custom API Access', ok: false },
-        ],
+        name: 'Starter', badge: 'Digital Baseline', price: '$99', period: '/mo/site',
+        desc: 'Basic digital visibility for small workshops.', icon: Zap, color: '#06B6D4',
+        features: ['Real-time Dashboard', 'Standard CIS Scoring', '30-Day Retention', 'Email Alerts', 'Up to 25 Workers'],
+        disabled: ['IoT Hardware Support', 'Edge Intelligence', 'E2EE Encryption'],
     },
     {
-        name: 'Aura Professional', subtitle: 'Active Shield', price: 499, icon: Star,
-        iconColor: '#10b981', popular: true,
-        desc: 'For factories deploying IoT wearables and active hazard mitigation.',
-        features: [
-            { t: 'Real-time Dashboard Access', ok: true },
-            { t: 'Advanced CIS Scoring', ok: true },
-            { t: '6-Month Data Retention', ok: true },
-            { t: 'SMS & Push Critical Alerts', ok: true },
-            { t: 'Up to 100 Workers', ok: true },
-            { t: 'Full IoT Wearable Support', ok: true },
-            { t: 'Edge Intelligence (S3)', ok: true },
-            { t: 'E2EE Encryption', ok: false },
-            { t: 'Custom API Access', ok: false },
-        ],
+        name: 'Professional', badge: 'Most Popular', price: '$499', period: '/mo/site',
+        desc: 'Full hazard prediction for connected fleets.', icon: Star, color: '#10B981', popular: true,
+        features: ['Advanced Dashboards', 'Advanced CIS + PdM', '6-Month Retention', 'SMS/Push Alerts', 'Up to 100 Workers', 'Full IoT Support', 'Edge Intelligence (S3)'],
+        disabled: ['Zero-Knowledge E2EE'],
     },
     {
-        name: 'Aura Elite', subtitle: 'Edge Intelligence', price: 1999, icon: Crown,
-        iconColor: '#f59e0b', popular: false,
-        desc: 'Enterprise-grade for multi-site plants requiring maximum security.',
-        features: [
-            { t: 'Real-time Dashboard Access', ok: true },
-            { t: 'AI-Powered CIS + Analytics', ok: true },
-            { t: 'Unlimited Data Retention', ok: true },
-            { t: 'Priority 24/7 Escalation', ok: true },
-            { t: 'Unlimited Workers & Sites', ok: true },
-            { t: 'Full IoT Wearable Support', ok: true },
-            { t: 'Edge Intelligence (S3)', ok: true },
-            { t: 'AES-256-GCM E2EE', ok: true },
-            { t: 'Custom API + ERP Integration', ok: true },
-        ],
+        name: 'Enterprise', badge: 'Maximum Security', price: 'Custom', period: '',
+        desc: 'Military-grade security for global operations.', icon: Crown, color: '#F59E0B',
+        features: ['All Pro Features', 'Unlimited Retention', 'Priority 24/7 Support', 'Zero-Knowledge E2EE', 'Custom Hardware Auth', 'API + ERP Integration', 'Unlimited Scale'],
+        disabled: [],
     },
 ];
 
-const Pricing = () => (
-    <section id="pricing" className="section">
-        <div className="container" style={{ textAlign: 'center' }}>
-            <div className="section-eyebrow" style={{ color: 'var(--amber)' }}>Pricing</div>
-            <h2 className="section-title">Built for Every Scale</h2>
-            <p className="section-subtitle" style={{ margin: '0 auto' }}>
-                From a single workshop to a global fleet operation. Choose the tier
-                that matches your safety ambition.
-            </p>
+const Pricing = () => {
+    const containerRef = useRef(null);
 
-            <div className="pricing-grid">
-                {plans.map(p => {
-                    const Icon = p.icon;
-                    return (
-                        <div key={p.name} className={`pricing-card ${p.popular ? 'popular' : ''}`}>
-                            {p.popular && <div className="pricing-popular-badge">Most Popular</div>}
+    useEffect(() => {
+        const text = new SplitType('.pricing-heading', { types: 'words, chars' });
 
-                            <div className="pricing-header">
-                                <div className="pricing-header-top">
-                                    <div className="pricing-icon">
-                                        <Icon size={20} color={p.iconColor} />
+        const ctx = gsap.context(() => {
+            gsap.from(text.chars, {
+                scrollTrigger: { trigger: containerRef.current, start: 'top 75%' },
+                y: 50,
+                opacity: 0,
+                rotationX: -90,
+                stagger: 0.02,
+                duration: 0.8,
+                ease: 'power3.out',
+                transformOrigin: '50% 50% -50',
+            });
+
+            gsap.from('.pricing-card', {
+                scrollTrigger: { trigger: containerRef.current, start: 'top 60%' },
+                y: 40,
+                opacity: 0,
+                stagger: 0.15,
+                duration: 0.8,
+                ease: 'power3.out',
+            });
+
+            // Shimmer effect for popular card
+            gsap.to('.popular-shimmer', {
+                boxShadow: '0 0 80px rgba(16,185,129,0.15)',
+                borderColor: 'rgba(16,185,129,0.6)',
+                duration: 2,
+                repeat: -1,
+                yoyo: true,
+                ease: 'sine.inOut'
+            });
+        }, containerRef);
+
+        return () => {
+            ctx.revert();
+            text.revert();
+        }
+    }, []);
+
+    return (
+        <section id="pricing" className="section" style={{ background: 'var(--bg-void)' }}>
+            <div className="container" ref={containerRef}>
+                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 64 }}>
+                    <div className="eyebrow" style={{ color: 'var(--amber)', justifyContent: 'center' }}>Plans & Pricing</div>
+                    <h2 className="heading-lg pricing-heading" style={{ marginBottom: 16, maxWidth: 1100, perspective: 1000 }}>
+                        Scale your safety protocol <span style={{ color: '#fff' }}>without limits.</span>
+                    </h2>
+                </div>
+
+                {/* Cards Grid */}
+                <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                    gap: 24, maxWidth: 1100, margin: '0 auto', alignItems: 'start',
+                }}>
+                    {plans.map((p, i) => (
+                        <div key={i} className={`glass-panel pricing-card ${p.popular ? 'popular-shimmer' : ''}`}
+                            onMouseEnter={(e) => {
+                                gsap.to(e.currentTarget.querySelector('.card-icon'), { scale: 1.15, rotation: 5, duration: 0.3, ease: 'back.out(2)' });
+                                gsap.to(e.currentTarget.querySelectorAll('.feature-item'), { x: 5, stagger: 0.05, duration: 0.3, ease: 'power2.out' });
+                                if (p.popular) {
+                                    gsap.to(e.currentTarget.querySelector('.popular-badge'), { y: -3, boxShadow: '0 8px 30px rgba(16,185,129,0.6)', duration: 0.3 });
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                gsap.to(e.currentTarget.querySelector('.card-icon'), { scale: 1, rotation: 0, duration: 0.3, ease: 'power2.out' });
+                                gsap.to(e.currentTarget.querySelectorAll('.feature-item'), { x: 0, stagger: 0.02, duration: 0.3, ease: 'power2.out' });
+                                if (p.popular) {
+                                    gsap.to(e.currentTarget.querySelector('.popular-badge'), { y: 0, boxShadow: '0 4px 20px rgba(16,185,129,0.4)', duration: 0.3 });
+                                }
+                            }}
+                            style={{
+                                padding: 36, display: 'flex', flexDirection: 'column', position: 'relative',
+                                borderColor: p.popular ? 'rgba(16,185,129,0.35)' : undefined,
+                                boxShadow: p.popular ? '0 0 60px rgba(16,185,129,0.08)' : undefined,
+                                transform: p.popular ? 'scale(1.02)' : undefined,
+                                transition: 'transform 0.4s, box-shadow 0.4s',
+                                cursor: 'pointer'
+                            }}>
+                            {/* Popular Badge */}
+                            {p.popular && (
+                                <div className="popular-badge" style={{
+                                    position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)',
+                                    padding: '6px 20px', borderRadius: 100, background: '#10B981', color: '#fff',
+                                    fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em',
+                                    whiteSpace: 'nowrap', boxShadow: '0 4px 20px rgba(16,185,129,0.4)',
+                                    zIndex: 10
+                                }}>
+                                    {p.badge}
+                                </div>
+                            )}
+
+                            {/* Header */}
+                            <div style={{ marginBottom: 24 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+                                    <div className="card-icon" style={{
+                                        width: 44, height: 44, borderRadius: 12,
+                                        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        transition: 'box-shadow 0.3s'
+                                    }}>
+                                        <p.icon size={20} color={p.color} />
                                     </div>
-                                    <div style={{ textAlign: 'left' }}>
-                                        <div className="pricing-name">{p.name}</div>
-                                        <div className="pricing-subtitle">{p.subtitle}</div>
+                                    <div>
+                                        <div style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{p.name}</div>
+                                        <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+                                            {!p.popular && p.badge}
+                                        </div>
                                     </div>
                                 </div>
-                                <p className="pricing-desc" style={{ textAlign: 'left' }}>{p.desc}</p>
-                                <div className="pricing-price" style={{ justifyContent: p.popular ? 'flex-start' : 'flex-start' }}>
-                                    <span className="pricing-amount">${p.price}</span>
-                                    <span className="pricing-period">/month/site</span>
+                                <p style={{ fontSize: 13, color: '#94A3B8', marginBottom: 16, lineHeight: 1.6, minHeight: 40 }}>{p.desc}</p>
+                                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                                    <span style={{ fontSize: 40, fontWeight: 800, fontFamily: 'var(--font-mono)', color: '#fff' }}>{p.price}</span>
+                                    <span style={{ fontSize: 13, color: '#475569' }}>{p.period}</span>
                                 </div>
                             </div>
 
-                            <div className="pricing-features">
+                            {/* Features */}
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28 }}>
                                 {p.features.map(f => (
-                                    <div key={f.t} className={`pricing-feature ${!f.ok ? 'disabled' : ''}`}
-                                        style={{ textAlign: 'left' }}>
-                                        {f.ok
-                                            ? <Check size={16} color="#10b981" style={{ flexShrink: 0 }} />
-                                            : <X size={16} color="#475569" style={{ flexShrink: 0, opacity: 0.4 }} />}
-                                        <span>{f.t}</span>
+                                    <div key={f} className="feature-item" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <Check size={16} color="#10B981" style={{ flexShrink: 0 }} />
+                                        <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>{f}</span>
+                                    </div>
+                                ))}
+                                {p.disabled.map(d => (
+                                    <div key={d} className="feature-item" style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: 0.35 }}>
+                                        <X size={16} color="#475569" style={{ flexShrink: 0 }} />
+                                        <span style={{ fontSize: 13, color: '#94A3B8', textDecoration: 'line-through' }}>{d}</span>
                                     </div>
                                 ))}
                             </div>
 
-                            <button className={`pricing-cta ${p.popular ? 'primary-cta' : 'secondary-cta'}`}>
-                                Get Started <ArrowRight size={16} />
-                            </button>
+                            {/* CTA */}
+                            <MagneticButton
+                                primary={p.popular}
+                                className={!p.popular ? 'w-full' : 'w-full'}
+                            >
+                                {p.name === 'Enterprise' ? 'Contact Sales' : 'Start Free Trial'}
+                                <ArrowRight size={16} />
+                            </MagneticButton>
                         </div>
-                    );
-                })}
-            </div>
+                    ))}
+                </div>
 
-            <p className="pricing-note">
-                All plans include a <span>14-day free trial</span>. No credit card required. Cancel anytime.
-            </p>
-        </div>
-    </section>
-);
+                <p style={{
+                    textAlign: 'center', marginTop: 48, fontSize: 13, color: '#475569',
+                }}>
+                    All plans include a <span style={{ color: '#10B981', fontWeight: 600 }}>14-day free trial</span>. No credit card required. Cancel anytime.
+                </p>
+            </div>
+        </section>
+    );
+};
 
 export default Pricing;
