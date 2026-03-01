@@ -1,48 +1,60 @@
-# 📱 Harmony Aura: Supervisor Mobile App
+# 📱 Harmony Aura: Supervisor Mobile Console
 
-The Supervisor App is a high-performance Flutter application that serves as the mobile "Command Center" for site managers. It provides real-time alerts, workforce oversight, and direct intervention capabilities.
+The Harmony Aura Supervisor App is a high-performance **Flutter** application that serves as the mobile "Command Center" for industrial site managers. It provides real-time alerts, workforce oversight, and direct intervention capabilities in the palm of your hand.
+
+---
+
+## 🏗️ Technical Architecture: The Command Loop
+
+The app operates on a **Reactive Listener Pattern**, ensuring that supervisors are notified of risks within milliseconds of their detection at the edge.
+
+```mermaid
+sequenceDiagram
+    participant E as Edge Node / Backend
+    participant F as Firebase RTDB
+    participant S as Supervisor App
+    E->>F: Push Risk Alert (CIS > 0.75)
+    F->>S: Stream Update (Listener)
+    S->>S: Local Notification Trigger
+    Note over S: Supervisor Reviews Triage
+    S->>F: Dispatch Command (e.g., REST_REQ)
+    F->>E: Execute Override
+```
 
 ---
 
 ## 🚀 Key Features
 
-### 1. **Actionable Alerts & Triage**
-- Real-time push notifications (via RTDB listeners) for critical biometric or machine events.
-- **Triage Cards**: View exactly why a worker is at risk (e.g., "High Stress coupled with High Coolant Temp").
-- **Direct Intervention**: Send commands (e.g., "Reduce Load to 60%") directly from the alert card.
+### 1. **Risk Triage & Alerts**
+- **Deep Visibility**: View exactly which telemetry points triggered the alert (e.g., "Heart Rate peaked at 145 BPM during Engine Overload").
+- **Intervention HUD**: Direct buttons to dispatch "Immediate Rest" or "Machine Load Cap" commands.
 
-### 2. **Worker Rest Requests**
-- Dedicated workflow for handling operator break requests.
-- Supervisors view a vitals snapshot of the operator at the time of request to make informed approval/denial decisions.
+### 2. **Break Management Workflow**
+- Receives and triages incoming rest requests from the `Operator App`.
+- Displays a "Snapshot" of the worker's vitals at the time of request to inform the approval process.
 
-### 3. **Fleet Overview**
-- Real-time status list of all active workers and their associated machine health.
-
----
-
-## 🏗️ Technical Architecture
-
-### 🛡️ **Firebase Data Link**
-- **Listener Pattern**: Every screen utilizes `StreamBuilder` combined with `FirebaseService` streams for absolute state synchronization with the Web Dashboard.
-- **Command Dispatch**: All supervisor actions are pushed to `site/commands/`, which the backend edge simulation listens to and executes.
-
-### 🎨 **Industrial UI Theme**
-- Custom design system using the `AuraTheme` class.
-- Focus on high contrast for outdoor visibility in industrial environments.
-- Consistent color coding with the Web Dashboard (Safe/Warning/Critical).
+### 3. **Fleet Health Real-time Grid**
+- A high-contrast, easy-to-read list of all active personnel and their assigned machinery status.
 
 ---
 
-## 🛠️ Setup & Run
+## 🎨 Design System
+- **High-Contrast Dark Mode**: Optimized for low-light industrial environments.
+- **Safety Specific Color-Coding**: Consistent with the Web Dashboard (Safe/Warning/Critical).
 
-1.  **Dependencies**:
-    ```bash
-    flutter pub get
-    ```
-2.  **Run with API Key**:
-    ```bash
-    flutter run --dart-define=FIREBASE_API_KEY=YOUR_KEY
-    ```
+---
+
+## 🛠️ Setup & Execution
+
+1. **Install Flutter SDK**: Ensure you are on Flutter 3.x.
+2. **Fetch Packages**:
+   ```bash
+   flutter pub get
+   ```
+3. **Run Environment**:
+   ```bash
+   flutter run --dart-define=FIREBASE_API_KEY=YOUR_KEY
+   ```
 
 ---
 *Command and Control. Anywhere on site.*

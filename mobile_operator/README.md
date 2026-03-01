@@ -1,45 +1,46 @@
-# 👷 Harmony Aura: Operator App
+# 👷 Harmony Aura: Operator Safety HUD
 
-The Harmony Aura Operator App is the companion application for individual workers. It provides a personal safety dashboard, real-time vitals monitoring, and a direct communication link to supervisors for rest requests.
+The Harmony Aura Operator App is the personal safety companion for frontline industrial workers. It provides an intuitive, high-visibility dashboard for monitoring personal biometrics and machine health.
 
 ---
 
 ## 🚀 Key Features
 
-### 1. **Personal Vitals Dashboard**
-- **Real-time Biometrics**: Continuous monitoring of Heart Rate (BPM), Heart Rate Variability (HRV), and Fatigue.
-- **CIS Monitoring**: Workers see their own Cognitive Intelligence Score simplified into a safety gauge.
-- **Assigned Machine Sync**: The app automatically syncs with the health of the machine being operated by that worker.
+### 1. **Personal Safety Dashboard**
+- **Real-time Vitals**: Live monitoring of Heart Rate, Fatigue, and Stress levels.
+- **Safety Gauge**: A simplified visual representation of the worker's own **CIS Score**.
+- **Linked Machine Status**: Instant visibility into the health and thermal state of the machinery currently being operated.
 
 ### 2. **Rest Request Lifecycle**
-- One-tap "Request Rest" functionality.
-- Captures a vitals snapshot (HR, Stress, Fatigue) at the moment of request to assist supervisor triage.
-- **Live Status Tracking**: Real-time status updates (Pending → Approved/Denied) synced directly from the Supervisor App or Web Dashboard.
+- **One-Tap Reporting**: Send a "Request Rest" signal to the supervisor console instantly.
+- **Vitals Snapshot**: Automatically attaches a 5-second heart rate and stress snapshot to the request for medical triage.
+- **Approval Tracking**: Live feedback on the status of the request (Pending → Approved/Denied).
 
 ---
 
 ## 🏗️ Technical Architecture
 
-### 🧬 **Data Models**
-- **WorkerData**: Mirrors the backend simulation properties (`heart_rate_bpm`, `fatigue_percent`, etc.).
-- **Normalization**: Translates raw machine physics into a consolidated stress level.
+### 🧬 **State Management**
+- **Firebase StreamBuilder**: The UI re-renders automatically as new telemetry is pushed by the `backend/` simulation or physical `iot/` wearables.
+- **Normalization Engine**: Converts machine physics (e.g., 98°C Coolant) into an understandable "Machine Stress" percentage for the worker.
 
-### 🔌 **Edge Connectivity**
-- Designed to eventually interface with local Bluetooth biometric wearables (Apple Watch, Garmin, Whoop).
-- Currently utilizes a Firebase RTDB stream for simulated biometric input from the `backend/` simulation engine.
+### 🎨 **UI Design: "HUD Focused"**
+- **Large Interaction Targets**: Designed for use while wearing industrial gloves.
+- **High-Contrast Indicators**: Readable under direct sunlight or in dimly lit conditions.
 
 ---
 
-## 🛠️ Setup & Run
+## 🛠️ Setup & Execution
 
-1.  **Dependencies**:
-    ```bash
-    flutter pub get
-    ```
-2.  **Run**:
-    ```bash
-    flutter run --dart-define=FIREBASE_API_KEY=YOUR_KEY
-    ```
+1. **Install Flutter SDK**: Ensure you are on Flutter 3.x.
+2. **Fetch Packages**:
+   ```bash
+   flutter pub get
+   ```
+3. **Run Environment**:
+   ```bash
+   flutter run --dart-define=FIREBASE_API_KEY=YOUR_KEY
+   ```
 
 ---
 *Your Safety, Your Data. Harmony in Action.*

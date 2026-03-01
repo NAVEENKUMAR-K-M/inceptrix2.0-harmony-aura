@@ -1,69 +1,88 @@
 # ⚙️ Harmony Aura: Simulation & Logic Engine
 
-The backend of Harmony Aura is a high-fidelity bio-physics simulation engine that generates production-grade synthetic telemetry, handles AI inference for predictive maintenance, and executes supervisor commands.
+The Harmony Aura Backend is a high-fidelity **Digital Twin** engine. It bridges the gap between raw hardware telemetry and actionable safety intelligence by utilizing stochastic biological modeling and deep learning for predictive maintenance.
 
 ---
 
-## 🧬 Physiological Modeling (Worker)
+## 🏗️ System Design: The Logic Loop
 
-Each worker (`W1` through `W10`) is initialized with a unique **Biological DNA Profile** seeded from their ID.
+```mermaid
+graph LR
+    subgraph "🧬 Data Generation"
+        W[Worker Bio-Model]
+        M[Machine Physics-Model]
+    end
 
-### 1. **Individual Profile Generation**
-- **Baseline Heart Rate**: Derived from Gaussian distribution `N(72, 8)`.
-- **HRV Sensitivity**: Inverse correlation with age and stress resistance.
-- **Fatigue Resistance**: Scalar multiplier (0.6 - 1.4) affecting energy depletion rate.
+    subgraph "🧠 Intelligence"
+        CIS[CIS Fusion Engine]
+        PdM[1D-CNN AI Inference]
+    end
 
-### 2. **Telemetry Fluctuations (Sensor Noise)**
-To simulate real-world IoT sensor jitter, we use the **Ornstein-Uhlenbeck (OU) Process**:
-$$dx_t = \theta (\mu - x_t) dt + \sigma dW_t$$
-- This ensures sensor readings (HR, Temp) don't jump randomly but behave like real, mean-reverting biological signals.
+    W -->|Raw BPM/Stress| CIS
+    M -->|Thermal/Vib| CIS
+    M -->|Telemetry Stream| PdM
+    CIS -->|Safety Score| FB[(Firebase)]
+    PdM -->|RUL / Failures| FB
+```
+
+---
+
+## 🧬 Physiological Modeling (Human)
+
+To simulate a workforce, the engine generates unique biological profiles based on worker IDs.
+
+### 1. **Baseline Generation**
+Each worker is assigned a **Biological DNA Profile**:
+- **Baseline HR**: `N(72, 8)` BPM.
+- **Fatigue Coeff**: `0.6 - 1.4` (determines how fast stress accumulates).
+
+### 2. **Stochastic Fluctuations**
+We utilize the **Ornstein-Uhlenbeck (OU) Process** to simulate realistic, mean-reverting biological telemetry. This prevents "jitter" and ensures readings behave like real medical signals:
+- `dx_t = θ(μ - x_t)dt + σdW_t`
+- **Mean Reversion (θ)**: Ensures BPM returns to baseline after a burst of activity.
+- **Volatility (σ)**: Adds natural heart rate variability (HRV).
 
 ---
 
 ## 🏗️ Physics Modeling (Machine)
 
-Machines are modeled with thermal balance equations and load-response inertia.
+Machines are simulated using first-order differential equations for thermal and load dynamics.
 
 ### 1. **Thermal Dynamics**
-The coolant temperature $T_c$ is calculated as:
-$$\Delta T = H_{gen} - H_{loss}$$
-- $H_{gen} \propto \text{Engine Load} \times \text{Ambient Temp}$
-- $H_{loss} \propto (T_c - T_{amb}) \times \text{Cooling Efficiency}$
+Coolant temperature change is modeled as:
+- `ΔT_coolant = (Heat_Gen - Heat_Loss) * Δt`
+- **Heat_Gen**: Proportional to `Engine_Load * Friction_Factor`.
+- **Heat_Loss**: `(T_coolant - T_ambient) * Cooling_Efficiency`.
 
-### 2. **Machine Stress Index**
-A weighted metric combining Thermal Load, Vibration Frequency, and Operating Mode.
+### 2. **Degradation Model**
+Machine health decays non-linearly over time:
+- `Health_t+1 = Health_t - (Load^2 * Vibration * Wear_Constant)`
 
 ---
 
-## 🧠 Core Intelligence
+## 🧠 Intelligence Modules
 
 ### 1. **CIS Score (Cognitive Intelligence Score)**
-The primary safety metric that correlates human and machine health.
+The core safety metric that correlates human stress with machine instability.
 - **Formula**: `CIS = (0.55 * HumanRisk) + (0.45 * MachineRisk)`
-- **HumanRisk**: `0.4 * HR_Risk + 0.3 * HRV_Risk + 0.3 * Fatigue_Risk`
-- **MachineRisk**: `0.6 * Stress_Risk + 0.4 * Degradation_Risk`
+- **HumanRisk**: Weighted average of `HR_Risk`, `HRV_Risk`, and `Fatigue_Level`.
+- **MachineRisk**: Weighted average of `Thermal_Stress` and `Vibration_Severity`.
 
-### 2. **Predictive Maintenance (PdM)**
-- **Architecture**: 1D Convolutional Neural Network.
-- **Input**: 60-tick sliding window of 6 telemetry parameters (RPM, Load, Temp, Vibration, Oil Pressure, Ambient Temp).
-- **Inference**: Every 5 ticks, the engine runs a `tf.keras` prediction to determine Remaining Useful Life (RUL) category.
-
----
-
-## 📡 Firebase Uplink Structure
-
-The engine pushes data to Firebase RTDB under specific atomic paths to prevent state race conditions:
-- `site/workers/{id}`: Real-time biometrics.
-- `site/machines/{id}`: Real-time telemetry.
-- `site/recommendations`: Generated via `alerts_engine.py`.
-- `site/commands`: Listening for supervisor overrides.
+### 2. **AI Predictive Maintenance (PdM)**
+- **Architecture**: **1D Convolutional Neural Network (1D-CNN)**.
+- **Input Array**: `60 x 6` (Last 60 ticks of RPM, Load, Temp, Vib, Oil, Ambient).
+- **Inference Pipeline**:
+    1. Reshape sliding window into `(1, 60, 6)`.
+    2. Conv1D Layer (32 filters) -> MaxPooling -> Dense.
+    3. Output: Categorical Failure Prediction (`Healthy`, `Minor Fault`, `Critical RUL`).
 
 ---
 
-## 🛠️ Requirements & Setup
-- Python 3.9+
-- `pip install -r requirements.txt` (includes: `firebase-admin`, `tensorflow`, `numpy`, `scikit-learn`)
-- `serviceAccountKey.json` required for Firebase authentication.
+## 🛠️ Tech Stack
+- **Language**: Python 3.9+
+- **Numerical Processing**: NumPy, Pandas.
+- **Machine Learning**: TensorFlow 2.15, Scikit-Learn.
+- **Uplink**: Firebase Admin SDK (Service Account driven).
 
 ---
-*Precision Monitoring for Critical Operations.*
+*Precision Monitoring for Critical Environments.*
